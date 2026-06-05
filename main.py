@@ -4,12 +4,38 @@ Commercial stack: Chirp STT | spaCy morphology | sentence-transformers embedding
                  j-hartmann emotion | librosa acoustics
 """
 
+import spacy
+import numpy as np
+import librosa
+import soundfile as sf
+import subprocess
+from google.cloud.speech_v2 import SpeechClient
+from google.cloud.speech_v2.types import cloud_speech
+
+FFMPEG = r"C:\Users\Niamh\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.1-full_build\bin\ffmpeg.exe"
+GCP_PROJECT = "project-e61ab50a-3782-4e35-814"
+
+def _to_wav(src: str) -> str:
+    """Convert any audio format to 16kHz mono wav using ffmpeg."""
+    dst = src + ".wav"
+    subprocess.run(
+        [FFMPEG, "-y", "-i", src, "-ar", "16000", "-ac", "1", dst],
+        check=True, capture_output=True
+    )
+    return dst
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+from transformers import pipeline as hf_pipeline
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 import tempfile, os, time, uuid
+
+_nlp = spacy.load("en_core_web_sm")
+_embedder = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+_emotion = hf_pipeline("text-classification", model="j-hartmann/emotion-english-distilroberta-base", top_k=None, device=-1)
 
 app = FastAPI(title="Cognitive Assessment API", version="1.0.0")
 
@@ -62,14 +88,31 @@ def transcribe_audio(audio_path: str) -> dict:
 
     Pricing: $0.024/min (standard Chirp), commercial license via Google Cloud.
     """
-    # STUB — replace with Chirp API call above
+    wav_path = _to_wav(audio_path)
+    with open(wav_path, "rb") as f:
+        content = f.read()
+
+    client = SpeechClient(client_options={"api_endpoint": "us-central1-speech.googleapis.com"})
+    config = cloud_speech.RecognitionConfig(
+        auto_decoding_config=cloud_speech.AutoDetectDecodingConfig(),
+        language_codes=["en-US"],
+        model="chirp",
+    )
+    request = cloud_speech.RecognizeRequest(
+        recognizer=f"projects/{GCP_PROJECT}/locations/us-central1/recognizers/_",
+        config=config,
+        content=content,
+    )
+    response = client.recognize(request=request)
+    transcript = " ".join(
+        r.alternatives[0].transcript for r in response.results if r.alternatives
+    )
+    word_count = len(transcript.split())
     return {
-        "transcript": "I usually wake up around seven in the morning and then I make breakfast. "
-                      "Sometimes I forget where I put my keys. Yesterday I went to the... "
-                      "the place where you buy things. The shop. I had a good day.",
-        "words_per_minute": 112,
-        "confidence": 0.94,
-        "model": "chirp"
+        "transcript": transcript,
+        "words_per_minute": word_count,
+        "confidence": response.results[0].alternatives[0].confidence if response.results else 0.0,
+        "model": "chirp",
     }
 
 
@@ -104,16 +147,46 @@ def extract_acoustic_features(audio_path: str) -> dict:
 
     Libraries: librosa (ISC ✅), SpeechBrain (Apache 2.0 ✅) — both commercial-safe.
     """
-    # STUB — replace with librosa/SpeechBrain calls above
+    wav_path = _to_wav(audio_path)
+    y, sr = librosa.load(wav_path, sr=16000, mono=True)
+    total_duration = len(y) / sr
+
+    # Speech / pause timing — only count pauses >= 300ms (clinically meaningful)
+    intervals = librosa.effects.split(y, top_db=40)
+    speech_duration = sum(e - s for s, e in intervals) / sr
+    min_pause_samples = int(0.3 * sr)
+    real_pauses = [
+        (intervals[i][1], intervals[i + 1][0])
+        for i in range(len(intervals) - 1)
+        if intervals[i + 1][0] - intervals[i][1] >= min_pause_samples
+    ]
+    pause_count = len(real_pauses)
+    pause_durations = [(e - s) / sr for s, e in real_pauses]
+    pause_duration = sum(pause_durations)
+    mean_pause_ms = round(np.mean(pause_durations) * 1000, 1) if pause_durations else 0.0
+
+    # Pitch via PYIN
+    f0, _, _ = librosa.pyin(y, fmin=75, fmax=300)
+    pitch_mean = float(np.nanmean(f0)) if np.any(~np.isnan(f0)) else 0.0
+    pitch_std  = float(np.nanstd(f0))  if np.any(~np.isnan(f0)) else 0.0
+
+    # HNR: harmonic energy vs noise (percussive) energy
+    harmonic, noise = librosa.effects.hpss(y)
+    h_power = np.mean(harmonic ** 2) + 1e-10
+    n_power = np.mean(noise ** 2) + 1e-10
+    hnr_db = round(float(10 * np.log10(h_power / n_power)), 2)
+
+    articulation_rate = round(speech_duration / total_duration * 4.0, 2) if total_duration > 0 else 0.0
+
     return {
-        "speech_rate_syllables_per_sec": 3.8,
-        "pause_count": 4,
-        "mean_pause_duration_ms": 820,
-        "total_pause_duration_sec": 3.3,
-        "pitch_mean_hz": 187.4,
-        "pitch_std_hz": 31.2,
-        "hnr_db": 18.6,
-        "articulation_rate": 4.1,
+        "speech_rate_syllables_per_sec": articulation_rate,
+        "pause_count": pause_count,
+        "mean_pause_duration_ms": mean_pause_ms,
+        "total_pause_duration_sec": round(pause_duration, 2),
+        "pitch_mean_hz": round(pitch_mean, 1),
+        "pitch_std_hz": round(pitch_std, 1),
+        "hnr_db": hnr_db,
+        "articulation_rate": articulation_rate,
     }
 
 
@@ -143,15 +216,32 @@ def analyse_morphology(transcript: str) -> dict:
 
     Library: spaCy MIT ✅ — commercial-safe.
     """
-    # STUB — replace with spaCy calls above
-    words = transcript.lower().split()
+    doc = _nlp(transcript)
+    tokens = [t for t in doc if not t.is_space]
+    content_words = [t for t in tokens if t.pos_ in {"NOUN", "VERB", "ADJ", "ADV"}]
+
+    noun_ratio = sum(1 for t in content_words if t.pos_ == "NOUN") / max(len(content_words), 1)
+    verb_ratio = sum(1 for t in content_words if t.pos_ == "VERB") / max(len(content_words), 1)
+
+    first_person = sum(1 for t in tokens if t.lower_ in {"i", "me", "my", "myself", "mine"})
+    third_person = sum(1 for t in tokens if t.lower_ in {"he", "she", "they", "him", "her", "them", "his", "hers", "their"})
+    first_person_ratio = first_person / max(first_person + third_person, 1)
+    third_person_ratio = third_person / max(first_person + third_person, 1)
+
+    disfluency_count = sum(
+        1 for t in tokens
+        if t.lower_ in {"um", "uh", "er", "hmm"}
+        or (t.lower_ in {"the", "a", "an"} and t.i + 1 < len(doc) and doc[t.i + 1].pos_ in {"PUNCT"})
+    )
+
+    words = [t.lower_ for t in tokens if not t.is_punct]
     return {
-        "noun_ratio": 0.31,
-        "verb_ratio": 0.22,
-        "first_person_ratio": 0.71,
-        "third_person_ratio": 0.08,
+        "noun_ratio": round(noun_ratio, 3),
+        "verb_ratio": round(verb_ratio, 3),
+        "first_person_ratio": round(first_person_ratio, 3),
+        "third_person_ratio": round(third_person_ratio, 3),
         "type_token_ratio": round(len(set(words)) / max(len(words), 1), 3),
-        "disfluency_count": 2,
+        "disfluency_count": disfluency_count,
         "word_count": len(words),
         "unique_words": len(set(words)),
     }
@@ -186,12 +276,33 @@ def analyse_semantics(transcript: str) -> dict:
 
     Model: all-mpnet-base-v2 (Apache 2.0 ✅) — commercial-safe.
     """
-    # STUB — replace with sentence-transformers calls above
+    sentences = [s.strip() for s in transcript.split(".") if s.strip()]
+    if len(sentences) < 2:
+        sentences = transcript.split(",")
+
+    if len(sentences) >= 2:
+        embeddings = _embedder.encode(sentences)
+        dists = [
+            1 - cosine_similarity([embeddings[i]], [embeddings[i + 1]])[0][0]
+            for i in range(len(embeddings) - 1)
+        ]
+        semantic_variability = float(np.var(dists))
+        topic_coherence = round(1 - float(np.mean(dists)), 3)
+    else:
+        semantic_variability = 0.0
+        topic_coherence = 1.0
+
+    common_words = {"the", "a", "an", "i", "and", "to", "of", "in", "is", "was", "it", "for"}
+    words = transcript.lower().split()
+    high_freq_ratio = sum(1 for w in words if w in common_words) / max(len(words), 1)
+
+    granularity = round(1 - high_freq_ratio, 3)
+
     return {
-        "semantic_variability": 0.18,
-        "high_frequency_word_ratio": 0.44,
-        "semantic_granularity_score": 0.61,
-        "topic_coherence": 0.73,
+        "semantic_variability": round(semantic_variability, 4),
+        "high_frequency_word_ratio": round(high_freq_ratio, 3),
+        "semantic_granularity_score": granularity,
+        "topic_coherence": topic_coherence,
     }
 
 
@@ -217,18 +328,12 @@ def analyse_emotion(transcript: str) -> dict:
 
     Model: j-hartmann/emotion-english-distilroberta-base (Apache 2.0 ✅).
     """
-    # STUB — replace with transformers pipeline above
-    return {
-        "joy": 0.31,
-        "sadness": 0.18,
-        "anger": 0.04,
-        "fear": 0.09,
-        "disgust": 0.03,
-        "surprise": 0.07,
-        "neutral": 0.28,
-        "dominant_emotion": "joy",
-        "valence": "positive",
-    }
+    results = _emotion(transcript[:512])[0]
+    emotions = {r["label"].lower(): round(r["score"], 4) for r in results}
+    dominant = max(emotions, key=emotions.get)
+    positive = {"joy", "surprise"}
+    valence = "positive" if dominant in positive else "negative" if dominant in {"anger", "disgust", "fear", "sadness"} else "neutral"
+    return {**emotions, "dominant_emotion": dominant, "valence": valence}
 
 
 def compute_scores(acoustic: dict, morphology: dict, semantics: dict, emotion: dict) -> dict:
@@ -239,10 +344,13 @@ def compute_scores(acoustic: dict, morphology: dict, semantics: dict, emotion: d
     """
 
     # Motor speech score (0-100)
-    # Penalise high pause count, low articulation, poor HNR
-    pause_penalty = min(acoustic["pause_count"] * 8, 40)
-    hnr_score = min(acoustic["hnr_db"] * 2.5, 50)
-    motor_score = max(0, round(100 - pause_penalty + hnr_score - 50, 1))
+    # Articulation component (0-50): peaks at 3.5 syl/sec
+    artic_score = min(acoustic["articulation_rate"] / 3.5 * 50, 50)
+    # Pause penalty (0-30): each meaningful pause costs 3 points
+    pause_penalty = min(acoustic["pause_count"] * 3, 30)
+    # HNR component (0-20): maps typical range (-5 to 15 dB) → (0 to 20)
+    hnr_score = max(0, min((acoustic["hnr_db"] + 5) / 20 * 20, 20))
+    motor_score = max(0, round(artic_score - pause_penalty + hnr_score + 10, 1))
 
     # Semantic memory score (0-100)
     # Low high-freq word ratio and high variability = better semantic navigation
@@ -263,9 +371,9 @@ def compute_scores(acoustic: dict, morphology: dict, semantics: dict, emotion: d
     )
 
     # Emotional processing score (0-100)
-    # Balanced emotional range, not flat neutral
-    neutral_excess = max(0, emotion["neutral"] - 0.5) * 60
-    emotional_score = round(max(0, 100 - neutral_excess * 100), 1)
+    # Penalise flat affect: score drops as neutral approaches 1.0
+    neutral_penalty = max(0, (emotion["neutral"] - 0.5) * 200)
+    emotional_score = round(max(0, 100 - neutral_penalty), 1)
 
     composite = round((motor_score + semantic_score + episodic_score + emotional_score) / 4, 1)
 

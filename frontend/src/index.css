@@ -1,0 +1,50 @@
+:root {
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Text */
+  --color-text-primary:   #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary:  #9ca3af;
+  --color-text-success:   #0f6e56;
+  --color-text-info:      #185fa5;
+  --color-text-warning:   #854f0b;
+  --color-text-danger:    #993c1d;
+
+  /* Backgrounds */
+  --color-background-primary:   #ffffff;
+  --color-background-secondary: #f9fafb;
+  --color-background-success:   #e1f5ee;
+  --color-background-warning:   #faeeda;
+  --color-background-danger:    #faece7;
+
+  /* Borders */
+  --color-border-tertiary: #e5e7eb;
+  --color-border-secondary: #d1d5db;
+  --color-border-warning:  #f5d08a;
+  --color-border-danger:   #f3b8a8;
+
+  /* Radii */
+  --border-radius-md: 6px;
+  --border-radius-lg: 10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: var(--font-sans);
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+button:hover { background: #f3f4f6; }
