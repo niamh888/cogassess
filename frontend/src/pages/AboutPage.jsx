@@ -74,13 +74,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Credits */}
-      <section>
-        <p style={{ fontSize: 13, color: "var(--color-text-tertiary)", margin: 0, lineHeight: 1.7 }}>
-          Developed by <strong style={{ color: "var(--color-text-secondary)" }}>St John Lynch &amp; Co. Ltd</strong> ·
-          © {new Date().getFullYear()} MemoryTell Ltd. All rights reserved.
-        </p>
-      </section>
     </div>
   );
 }
