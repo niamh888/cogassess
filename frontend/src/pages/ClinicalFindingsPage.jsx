@@ -28,10 +28,12 @@ export default function ClinicalFindingsPage() {
   const [saved, setSaved]           = useState(false);
   const [error, setError]           = useState(null);
 
-  const [outcome, setOutcome]           = useState("");
-  const [followUpDate, setFollowUpDate] = useState("");
-  const [internalNotes, setInternalNotes] = useState("");
+  const [outcome, setOutcome]               = useState("");
+  const [followUpDate, setFollowUpDate]     = useState("");
+  const [internalNotes, setInternalNotes]   = useState("");
   const [patientSummary, setPatientSummary] = useState("");
+  const [changeReason, setChangeReason]     = useState("");
+  const [history, setHistory]               = useState([]);
 
   useEffect(() => {
     fetch(`${API}/assessments/${key}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -42,13 +44,18 @@ export default function ClinicalFindingsPage() {
         if (data.follow_up_date)            setFollowUpDate(data.follow_up_date);
         if (data.clinical_notes_findings)   setInternalNotes(data.clinical_notes_findings);
         if (data.patient_summary)           setPatientSummary(data.patient_summary);
+        // Load audit history
+        return fetch(`${API}/assessments/${key}/findings/history`, { headers: { Authorization: `Bearer ${token}` } });
       })
+      .then(r => r && r.ok ? r.json() : [])
+      .then(h => setHistory(h))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [key, token]);
 
   const selectedOutcome = OUTCOMES.find(o => o.value === outcome);
   const needsFollowUp   = selectedOutcome?.followUp ?? false;
+  const isAmendment     = !!assessment?.findings_recorded_at;
 
   async function handleSave(e) {
     e.preventDefault();
@@ -65,10 +72,18 @@ export default function ClinicalFindingsPage() {
           follow_up_date: needsFollowUp ? followUpDate : null,
           clinical_notes_findings: internalNotes || null,
           patient_summary: patientSummary || null,
+          change_reason: isAmendment ? changeReason : null,
         }),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.detail || `HTTP ${r.status}`);
+      }
+      setChangeReason("");
       setSaved(true);
+      // Refresh history
+      const h = await fetch(`${API}/assessments/${key}/findings/history`, { headers: { Authorization: `Bearer ${token}` } });
+      if (h.ok) setHistory(await h.json());
     } catch (e) {
       setError(e.message);
     } finally {
@@ -101,9 +116,16 @@ export default function ClinicalFindingsPage() {
       </div>
 
       {/* Clinician notice */}
-      <div style={{ background: "var(--color-background-warning)", border: "0.5px solid var(--color-border-warning)", borderRadius: "var(--border-radius-md)", padding: "10px 16px", marginBottom: 28, fontSize: 13, color: "var(--color-text-warning)", lineHeight: 1.5 }}>
+      <div style={{ background: "var(--color-background-warning)", border: "0.5px solid var(--color-border-warning)", borderRadius: "var(--border-radius-md)", padding: "10px 16px", marginBottom: isAmendment ? 12 : 28, fontSize: 13, color: "var(--color-text-warning)", lineHeight: 1.5 }}>
         <strong>Clinician-only record.</strong> Internal notes and clinical outcome are not shared with the patient. The patient summary (if written) can be provided via the patient summary page.
       </div>
+
+      {/* Amendment banner */}
+      {isAmendment && (
+        <div style={{ background: "#fdeaea", border: "0.5px solid #f5a0a0", borderRadius: "var(--border-radius-md)", padding: "12px 16px", marginBottom: 28, fontSize: 13, color: "#c62828", lineHeight: 1.6 }}>
+          <strong>Amending signed findings.</strong> These findings were previously signed on {new Date(assessment.findings_recorded_at).toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "2-digit" })}. Every change is recorded in the audit trail below. A reason for amendment is required.
+        </div>
+      )}
 
       <form onSubmit={handleSave}>
         {/* Outcome selection */}
@@ -177,6 +199,24 @@ export default function ClinicalFindingsPage() {
           </label>
         </section>
 
+        {/* Reason for amendment (required when editing signed findings) */}
+        {isAmendment && (
+          <section style={{ background: "#fdeaea", border: "0.5px solid #f5a0a0", borderRadius: "var(--border-radius-lg)", padding: "1.5rem", marginBottom: 28 }}>
+            <label style={{ display: "block" }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#c62828", display: "block", marginBottom: 2 }}>Reason for amendment <span style={{ fontWeight: 400 }}>(required)</span></span>
+              <span style={{ fontSize: 12, color: "#c62828", opacity: 0.8, display: "block", marginBottom: 10 }}>This reason will be permanently recorded in the audit trail alongside the previous version of the findings.</span>
+              <textarea
+                value={changeReason}
+                onChange={e => setChangeReason(e.target.value)}
+                rows={3}
+                required
+                placeholder="e.g. Outcome updated following specialist referral confirmation…"
+                style={{ width: "100%", fontSize: 14, lineHeight: 1.6, padding: "10px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid #f5a0a0", color: "var(--color-text-primary)", background: "#fff", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }}
+              />
+            </label>
+          </section>
+        )}
+
         {/* Error */}
         {error && (
           <p style={{ fontSize: 13, color: "var(--color-text-danger)", marginBottom: 16 }}>Error: {error}</p>
@@ -186,10 +226,10 @@ export default function ClinicalFindingsPage() {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <button
             type="submit"
-            disabled={!outcome || saving}
-            style={{ padding: "10px 24px", borderRadius: "var(--border-radius-md)", background: !outcome ? "var(--color-border-secondary)" : "var(--color-accent)", color: "#fff", border: "none", fontWeight: 600, fontSize: 14, cursor: !outcome ? "not-allowed" : "pointer" }}
+            disabled={!outcome || saving || (isAmendment && !changeReason.trim())}
+            style={{ padding: "10px 24px", borderRadius: "var(--border-radius-md)", background: (!outcome || (isAmendment && !changeReason.trim())) ? "var(--color-border-secondary)" : "var(--color-accent)", color: "#fff", border: "none", fontWeight: 600, fontSize: 14, cursor: (!outcome || (isAmendment && !changeReason.trim())) ? "not-allowed" : "pointer" }}
           >
-            {saving ? "Saving…" : "Save findings"}
+            {saving ? "Saving…" : isAmendment ? "Save amendment" : "Save findings"}
           </button>
 
           {saved && patientSummary && (
@@ -207,6 +247,38 @@ export default function ClinicalFindingsPage() {
           )}
         </div>
       </form>
+
+      {/* Audit trail */}
+      {history.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
+            Findings audit trail ({history.length} {history.length === 1 ? "entry" : "entries"})
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {history.map((entry, i) => (
+              <div key={i} style={{ background: "var(--color-surface)", border: "0.5px solid var(--color-border-primary)", borderRadius: "var(--border-radius-md)", padding: "14px 18px", fontSize: 13 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: entry.action === "initial" ? "#0f6e56" : "#854f0b", background: entry.action === "initial" ? "#e1f5ee" : "#faeeda", border: `0.5px solid ${entry.action === "initial" ? "#b8d4c0" : "#f5d08a"}`, borderRadius: 4, padding: "1px 8px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    {entry.action === "initial" ? "Initial findings" : "Amendment"}
+                  </span>
+                  <span style={{ color: "var(--color-text-tertiary)", fontSize: 12 }}>
+                    {entry.clinician_name} · {new Date(entry.recorded_at).toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "2-digit" })} at {new Date(entry.recorded_at).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <div style={{ color: "var(--color-text-primary)" }}>
+                  <strong>Outcome:</strong> {outcomeLabel(entry.clinical_outcome)}
+                  {entry.follow_up_date && <span> · <strong>Follow-up:</strong> {new Date(entry.follow_up_date + "T12:00:00").toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "2-digit" })}</span>}
+                </div>
+                {entry.change_reason && (
+                  <p style={{ margin: "6px 0 0", color: "var(--color-text-secondary)", fontStyle: "italic" }}>
+                    Reason: {entry.change_reason}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

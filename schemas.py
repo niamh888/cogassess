@@ -70,6 +70,7 @@ class FindingsCreate(BaseModel):
     follow_up_date: Optional[str] = None
     clinical_notes_findings: Optional[str] = None
     patient_summary: Optional[str] = None
+    change_reason: Optional[str] = None  # required when amending existing signed findings
 
 
 # ── Clinician management ──────────────────────────────────────────────────────

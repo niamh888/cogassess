@@ -932,6 +932,26 @@ def save_findings(
     if a.clinician_id != clinician.id:
         raise HTTPException(403, "Not your assessment")
 
+    is_amendment = a.findings_recorded_at is not None
+    if is_amendment and not (data.change_reason or "").strip():
+        raise HTTPException(
+            400,
+            "A reason for amendment is required when updating previously signed findings.",
+        )
+
+    # Write to immutable audit log before overwriting
+    db.add(models.FindingsAudit(
+        assessment_id           = a.id,
+        clinician_id            = clinician.id,
+        action                  = "amendment" if is_amendment else "initial",
+        change_reason           = data.change_reason if is_amendment else None,
+        clinical_outcome        = data.clinical_outcome,
+        follow_up_period        = data.follow_up_period,
+        follow_up_date          = data.follow_up_date,
+        clinical_notes_findings = data.clinical_notes_findings,
+        patient_summary         = data.patient_summary,
+    ))
+
     a.clinical_outcome          = data.clinical_outcome
     a.follow_up_period          = data.follow_up_period
     a.follow_up_date            = data.follow_up_date
@@ -942,5 +962,30 @@ def save_findings(
 
     return {
         "status": "ok",
+        "action": "amendment" if is_amendment else "initial",
         "findings_recorded_at": a.findings_recorded_at.isoformat(),
     }
+
+
+@app.get("/assessments/{assessment_key}/findings/history")
+def get_findings_history(
+    assessment_key: str,
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    a = db.query(models.Assessment).filter(
+        models.Assessment.assessment_key == assessment_key
+    ).first()
+    if not a:
+        raise HTTPException(404, "Assessment not found")
+    return [
+        {
+            "action":         entry.action,
+            "change_reason":  entry.change_reason,
+            "clinical_outcome": entry.clinical_outcome,
+            "follow_up_date": entry.follow_up_date,
+            "clinician_name": entry.clinician.full_name,
+            "recorded_at":    entry.recorded_at.isoformat(),
+        }
+        for entry in a.findings_audit
+    ]

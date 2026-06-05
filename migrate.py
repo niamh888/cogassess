@@ -38,5 +38,24 @@ for table, column, definition in MIGRATIONS:
     else:
         print(f"  -- '{table}.{column}' already exists, skipped")
 
+# Create findings_audit table if it doesn't exist
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS findings_audit (
+        id                      INTEGER PRIMARY KEY,
+        assessment_id           INTEGER NOT NULL REFERENCES assessments(id),
+        clinician_id            INTEGER NOT NULL REFERENCES clinicians(id),
+        action                  TEXT NOT NULL,
+        change_reason           TEXT,
+        clinical_outcome        TEXT,
+        follow_up_period        TEXT,
+        follow_up_date          TEXT,
+        clinical_notes_findings TEXT,
+        patient_summary         TEXT,
+        recorded_at             TEXT DEFAULT (datetime('now'))
+    )
+""")
+conn.commit()
+print("  [OK] 'findings_audit' table ready")
+
 conn.close()
 print("\nMigration complete.")

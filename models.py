@@ -57,12 +57,36 @@ class Assessment(Base):
     findings_recorded_at = Column(DateTime)
     created_at           = Column(DateTime, default=datetime.utcnow)
 
-    patient      = relationship("Patient", back_populates="assessments")
-    clinician    = relationship("Clinician", back_populates="assessments")
-    task_results = relationship(
+    patient        = relationship("Patient", back_populates="assessments")
+    clinician      = relationship("Clinician", back_populates="assessments")
+    task_results   = relationship(
         "TaskResult", back_populates="assessment",
         order_by="TaskResult.task_index",
     )
+    findings_audit = relationship(
+        "FindingsAudit", back_populates="assessment",
+        order_by="FindingsAudit.recorded_at",
+    )
+
+
+class FindingsAudit(Base):
+    """Immutable audit log — one row per save of clinical findings."""
+    __tablename__ = "findings_audit"
+
+    id                      = Column(Integer, primary_key=True)
+    assessment_id           = Column(Integer, ForeignKey("assessments.id"), nullable=False)
+    clinician_id            = Column(Integer, ForeignKey("clinicians.id"), nullable=False)
+    action                  = Column(String, nullable=False)  # "initial" | "amendment"
+    change_reason           = Column(Text, nullable=True)
+    clinical_outcome        = Column(String, nullable=True)
+    follow_up_period        = Column(String, nullable=True)
+    follow_up_date          = Column(String, nullable=True)
+    clinical_notes_findings = Column(Text, nullable=True)
+    patient_summary         = Column(Text, nullable=True)
+    recorded_at             = Column(DateTime, default=datetime.utcnow)
+
+    assessment = relationship("Assessment", back_populates="findings_audit")
+    clinician  = relationship("Clinician")
 
 
 class TaskResult(Base):
