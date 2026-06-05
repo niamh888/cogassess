@@ -1,7 +1,7 @@
 export default function Footer({ onPrivacy, onTerms }) {
   return (
     <footer style={{ borderTop: "0.5px solid var(--color-border-tertiary)", marginTop: "3rem" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "1.25rem 1rem", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "1.25rem 1rem", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <img
             src="/memorytell-logo.png"
