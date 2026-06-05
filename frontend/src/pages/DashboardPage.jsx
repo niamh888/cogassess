@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const API = "http://localhost:8000";
@@ -8,7 +8,7 @@ const STATUS_COLOR = { in_progress: "#854f0b", complete: "#0f6e56" };
 const STATUS_BG    = { in_progress: "#faeeda", complete: "#e1f5ee" };
 
 export default function DashboardPage() {
-  const { token, clinicianName, logout } = useAuth();
+  const { token, clinicianName } = useAuth();
   const navigate = useNavigate();
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading]         = useState(true);
@@ -23,7 +23,7 @@ export default function DashboardPage() {
   }, [token]);
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "2rem 1rem" }}>
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1rem" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: 12 }}>
         <div>
@@ -34,21 +34,12 @@ export default function DashboardPage() {
             Welcome, {clinicianName || "Clinician"}
           </h1>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <Link to="/about" style={{ fontSize: 13, color: "var(--color-text-secondary)", textDecoration: "none", padding: "7px 12px" }}>
-            About
-          </Link>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
             onClick={() => navigate("/intake")}
             style={{ padding: "8px 20px", background: "var(--color-accent)", color: "#fff", border: "none", borderRadius: "var(--border-radius-md)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}
           >
             + New assessment
-          </button>
-          <button
-            onClick={logout}
-            style={{ padding: "8px 14px", background: "transparent", color: "var(--color-text-secondary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-sans)" }}
-          >
-            Log out
           </button>
         </div>
       </div>
