@@ -500,7 +500,7 @@ export default function ReportPage() {
 
       {/* Clinical notice */}
       <div style={{ background: "var(--color-background-warning)", border: "0.5px solid var(--color-border-warning)", borderRadius: "var(--border-radius-md)", padding: "10px 16px", marginBottom: 24, fontSize: 13, color: "var(--color-text-warning)", lineHeight: 1.5 }}>
-        <strong>For clinician interpretation only.</strong> These are speech biomarker indicators — not a diagnosis. Results must be interpreted in clinical context and must not be communicated directly to patients.
+        <strong>For clinician interpretation only.</strong> These are speech biomarker indicators — not a diagnosis. Results should be interpreted in clinical context and should not be communicated directly to patients.
       </div>
 
       {task_results.length === 0 && (

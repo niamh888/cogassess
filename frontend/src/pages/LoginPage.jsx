@@ -88,7 +88,7 @@ export default function LoginPage() {
 
         <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", textAlign: "center", marginTop: "2rem", lineHeight: 1.7, marginBottom: 0 }}>
           For authorised clinicians only.<br />
-          CogAssess outputs require clinician interpretation and must not be communicated directly to patients.
+          CogAssess outputs require clinician interpretation and should not be communicated directly to patients.
         </p>
       </div>
     </div>

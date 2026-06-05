@@ -46,7 +46,7 @@ export default function DashboardPage() {
 
       {/* Clinical notice */}
       <div style={{ background: "var(--color-background-warning)", border: "0.5px solid var(--color-border-warning)", borderRadius: "var(--border-radius-md)", padding: "10px 16px", marginBottom: 24, fontSize: 13, color: "var(--color-text-warning)", lineHeight: 1.5 }}>
-        <strong>Clinical notice:</strong> CogAssess results are biomarker indicators only. All outputs require clinician interpretation and must not be communicated directly to patients.
+        <strong>Clinical notice:</strong> CogAssess results are biomarker indicators only. All outputs require clinician interpretation and should not be communicated directly to patients.
       </div>
 
       {/* Content */}
