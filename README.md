@@ -1,44 +1,49 @@
-# CogAssess — Cognitive Assessment Platform
+# CogAssess — Speech Biomarker Assessment Platform
 
-A speech biomarker pipeline for cognitive deficit screening, modelled on the
-[TELL (Toolkit to Examine Lifelike Language)](https://www.karger.com/Article/FullText/536878)
-architecture from Universidad de San Andrés, Argentina.
+A clinician-facing speech biomarker assessment platform developed by **St John Lynch & Co. Ltd** on behalf of **MemoryTell Ltd**.
 
-All components are commercially licensed. TELL's non-commercial components
-(PySentimiento, FreeLing, FastText, PRAAT) have been replaced with
-commercial-safe equivalents.
+CogAssess records short speech samples from patients, runs them through a five-stage AI analysis pipeline, and presents clinicians with a scored cognitive report across four domains. Clinicians then record findings and generate a patient-facing summary.
+
+> **Clinical notice:** CogAssess outputs are speech biomarker indicators — not a diagnosis. Results should be interpreted by a qualified clinician and should not be shared directly with patients.
+
+---
+
+## Features
+
+- **Configurable task battery** — 8 speech tasks, 8 clinical condition presets (Early dementia, MCI, Parkinson's, etc.)
+- **Five-stage AI pipeline** — STT → acoustics → linguistics → semantics → emotion
+- **Clinical report** — per-task and cumulative scores, population bell curve, clinical flags
+- **Clinical findings workflow** — outcome, follow-up date, internal notes, patient summary
+- **Patient summary page** — printable, no numerical scores, plain-English bell curve
+- **JWT authentication** — 8-hour sessions, bcrypt password hashing
+- **IEC 62304 Class B** SDLC documentation suite included in `docs/`
 
 ---
 
 ## How it works
 
-The participant records a brief speech sample (60 seconds) in the browser.
-The audio is sent to the FastAPI backend where five pipeline stages run in sequence:
+The patient records speech in the browser. Audio is sent to the FastAPI backend where five pipeline stages run in sequence:
 
 ```
 Browser (React + MediaRecorder)
-  └── POST /assess  (audio/webm)
-        ├── Stage 1: Google Chirp STT       — transcribes speech to text
-        ├── Stage 2: Librosa acoustics       — pause timing, pitch, HNR
-        ├── Stage 3: spaCy morphology        — word-finding, pronouns, disfluencies
-        ├── Stage 4: sentence-transformers   — semantic variability and coherence
-        └── Stage 5: j-hartmann emotion      — 7-class emotion detection
+  └── POST /assessments/{key}/tasks/{index}
+        ├── Stage 1: Google Chirp STT          — speech to text
+        ├── Stage 2: librosa acoustics          — pause timing, pitch, HNR
+        ├── Stage 3: spaCy morphology           — vocabulary, pronouns, disfluencies
+        ├── Stage 4: sentence-transformers      — semantic variability and coherence
+        └── Stage 5: j-hartmann emotion         — 7-class emotion detection
 ```
 
-The output is a scored report across four cognitive domains:
+**Scored domains (0–100, higher = better preserved):**
 
 | Domain | What it measures |
 |--------|-----------------|
 | Motor speech | Articulation rate, pause frequency, harmonic-to-noise ratio |
 | Semantic memory | Vocabulary richness, high-frequency word use, topic coherence |
-| Episodic memory | First-person narrative use, type-token ratio, disfluency count |
+| Episodic memory | First-person narrative, type-token ratio, disfluency count |
 | Emotional processing | Emotional range, flat affect detection |
 
-Scores are 0–100. A composite score and overall risk flag (low / moderate / elevated)
-are generated per session.
-
-> **Clinical disclaimer:** Scores are indicative only and require clinical validation
-> before use in any diagnostic context. Not for use as a standalone diagnostic tool.
+**Risk flags:** Low risk ≥ 70 · Moderate 45–69 · Elevated < 45
 
 ---
 
@@ -46,10 +51,10 @@ are generated per session.
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
-| Python | 3.10+ | 3.13 confirmed working |
-| Node.js | 18+ | For the React frontend |
-| ffmpeg | Any recent | Used to convert browser audio (webm → wav) |
-| Google Cloud account | — | For Chirp STT; free tier includes 60 min/month |
+| Python | 3.10–3.13 | 3.13 confirmed working |
+| Node.js | 18 LTS+ | For the React frontend |
+| ffmpeg | Any recent | Converts browser audio (webm → wav) |
+| Google Cloud account | — | Chirp STT; free tier: 60 min/month |
 
 ---
 
@@ -68,8 +73,7 @@ cd cogassess
 ```powershell
 winget install ffmpeg
 ```
-After install, find the full path to `ffmpeg.exe` — you will need it in step 5.
-Typical location:
+Note the full path to `ffmpeg.exe` after installation — you will need it when starting the server. Typical location:
 ```
 C:\Users\<YourName>\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_...\bin\ffmpeg.exe
 ```
@@ -86,7 +90,7 @@ sudo apt install ffmpeg
 
 ---
 
-### 3. Set up the Python backend
+### 3. Python backend
 
 ```bash
 # Create and activate a virtual environment
@@ -99,21 +103,17 @@ venv\Scripts\activate
 source venv/bin/activate
 
 # Install dependencies
-pip install fastapi "uvicorn[standard]" python-multipart pydantic \
-    spacy sentence-transformers scikit-learn \
-    "transformers[torch]" librosa soundfile \
-    google-cloud-speech
+pip install -r requirements.txt
 
 # Download the spaCy English model
 python -m spacy download en_core_web_sm
 ```
 
-> **Note:** The sentence-transformers and emotion models (~670MB total) download
-> automatically from HuggingFace on first startup and are cached locally.
+> On first startup the HuggingFace models (~670 MB) download automatically and are cached locally. Subsequent startups are fast.
 
 ---
 
-### 4. Set up the React frontend
+### 4. React frontend
 
 ```bash
 cd frontend
@@ -122,47 +122,39 @@ npm install
 
 ---
 
-### 5. Configure environment variables
-
-Copy the example file:
-
-```bash
-# Windows
-copy .env.example .env
-
-# macOS / Linux
-cp .env.example .env
-```
-
-Edit `.env` and set:
-
-- `GCP_PROJECT_ID` — your Google Cloud project ID (see step 6)
-- `FFMPEG_PATH` — full path to the ffmpeg binary (Windows only; leave as `ffmpeg` on Mac/Linux)
-
-On Windows, set variables in PowerShell before starting the server:
-```powershell
-$env:GCP_PROJECT_ID = "your-project-id"
-$env:FFMPEG_PATH = "C:\Users\YourName\AppData\Local\...\ffmpeg.exe"
-```
-
----
-
-### 6. Google Cloud — Chirp STT setup
+### 5. Google Cloud — Chirp STT
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com)
 2. Create or select a project and note the **Project ID**
-3. Search for **"Cloud Speech-to-Text API"** (service: `speech.googleapis.com`) and enable it
-4. Install the Google Cloud CLI: [cloud.google.com/sdk/docs/install](https://cloud.google.com/sdk/docs/install)
-5. Authenticate:
+3. Enable **Cloud Speech-to-Text API** (`speech.googleapis.com`)
+4. Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) and authenticate:
 
 ```bash
 gcloud auth application-default login
 gcloud auth application-default set-quota-project YOUR_PROJECT_ID
 ```
 
-> **Note for organisation accounts (e.g. university):** If your organisation blocks
-> service account key creation, use Application Default Credentials (step 5 above)
-> instead of a JSON key file. This is also the recommended approach for development.
+> **University / organisation accounts:** If your org blocks service account keys, Application Default Credentials (above) are the recommended approach for development.
+
+---
+
+### 6. Initialise the database and create the first clinician account
+
+```bash
+# Windows
+venv\Scripts\python.exe init_db.py
+
+# macOS / Linux
+venv/bin/python init_db.py
+```
+
+This creates `cogassess.db` and a default administrator account:
+
+| Username | Password |
+|----------|----------|
+| `admin` | `changeme` |
+
+**Change the password after first login** by updating it directly via the API or by editing `init_db.py` before running it.
 
 ---
 
@@ -170,17 +162,20 @@ gcloud auth application-default set-quota-project YOUR_PROJECT_ID
 
 Open two terminals.
 
-**Terminal 1 — backend:**
-```bash
-# Activate venv first
-venv\Scripts\activate          # Windows
-source venv/bin/activate       # macOS / Linux
-
-uvicorn main:app --reload --port 8000
+**Terminal 1 — backend (Windows with OneDrive path):**
+```powershell
+$env:GCP_PROJECT_ID = "your-project-id"
+$env:FFMPEG_PATH    = "C:\Users\YourName\AppData\Local\...\ffmpeg.exe"
+venv\Scripts\python.exe -m uvicorn main:app
 ```
 
-On first startup the HuggingFace models will download (~670MB). Subsequent
-startups are fast.
+> **Windows / OneDrive note:** Do not use `--reload`. The watchfiles file watcher crashes on paths containing spaces (common with OneDrive). Restart the server manually after backend changes.
+
+**Terminal 1 — backend (macOS / Linux):**
+```bash
+export GCP_PROJECT_ID="your-project-id"
+venv/bin/python -m uvicorn main:app --reload
+```
 
 **Terminal 2 — frontend:**
 ```bash
@@ -188,20 +183,32 @@ cd frontend
 npm run dev
 ```
 
-Open **http://localhost:5173** in your browser.
+Open **http://localhost:5173** in your browser and sign in with your clinician credentials.
 
 ---
 
-## Verifying the pipeline
+### 8. Verify the pipeline
 
-Visit **http://localhost:8000/health** — you should see:
+```
+GET http://localhost:8000/health
+```
 
+Expected response:
 ```json
 {"status": "ok", "pipeline_stages": ["chirp_stt", "acoustic", "morphology", "semantics", "emotion"]}
 ```
 
-In the browser, the **Pipeline mode** toggle shows **Live API** by default.
-Record a 30–60 second speech sample and click **Stop & analyse**.
+---
+
+## Clinician workflow
+
+1. **Sign in** at `http://localhost:5173`
+2. **Dashboard** — view all assessments; click **+ New assessment**
+3. **Intake form** — enter patient reference, date of birth (age band auto-filled), language, environment, condition preset and task selection
+4. **Recording screen** — hand the device to the patient; they work through each task; audio is processed after each one
+5. **Clinical report** — per-task scores, population bell curve, clinical flags
+6. **Record findings** — outcome, follow-up date, internal clinical notes
+7. **Patient summary** — printable page with outcome badge, plain-English bell curve, clinician-written summary (no numerical scores shown)
 
 ---
 
@@ -209,38 +216,69 @@ Record a 30–60 second speech sample and click **Stop & analyse**.
 
 ```
 cogassess/
-├── main.py              # FastAPI backend — all 5 pipeline stages
-├── requirements.txt     # Python dependencies
-├── .env.example         # Environment variable template
+├── main.py                  # FastAPI backend — pipeline, auth, all endpoints
+├── models.py                # SQLAlchemy ORM models
+├── schemas.py               # Pydantic request/response schemas
+├── database.py              # DB engine and session
+├── auth.py                  # JWT creation and verification
+├── init_db.py               # First-run DB initialisation
+├── migrate.py               # Additive schema migrations
+├── requirements.txt         # Python dependencies
+├── cogassess.db             # SQLite database (test data only — replace for production)
+├── docs/                    # IEC 62304 Class B SDLC documentation
+│   ├── SRS.md / SRS.docx    # CA-SRS-001 Software Requirements Specification
+│   ├── SAD.md / SAD.docx    # CA-SAD-001 Software Architecture Description
+│   ├── SDP.md / SDP.docx    # CA-SDP-001 Software Development Plan
+│   ├── SVP.md / SVP.docx    # CA-SVP-001 Software Verification Plan
+│   ├── RMF.md / RMF.docx    # CA-RMF-001 Risk Management File (ISO 14971)
+│   ├── SOUP.md / SOUP.docx  # CA-SOUP-001 SOUP Evaluation Records
+│   ├── SRR.md / SRR.docx    # CA-SRR-001 Software Release Record
+│   └── SEC.md / SEC.docx    # CA-SEC-001 Security Architecture & Threat Model
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx      # React UI — recording, task flow, report
-│   │   ├── main.jsx     # React entry point
-│   │   └── index.css    # CSS variables and base styles
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
+│   │   ├── App.jsx               # Routes and layout (ClinicianLayout / PatientLayout)
+│   │   ├── pages/
+│   │   │   ├── LoginPage.jsx
+│   │   │   ├── DashboardPage.jsx
+│   │   │   ├── IntakePage.jsx
+│   │   │   ├── PatientPage.jsx        # Patient-facing recording screen
+│   │   │   ├── ReportPage.jsx         # Clinical report
+│   │   │   ├── ClinicalFindingsPage.jsx
+│   │   │   ├── PatientSummaryPage.jsx # Printable patient summary
+│   │   │   └── AboutPage.jsx
+│   │   ├── components/
+│   │   │   ├── Header.jsx        # Sticky header with logo → home
+│   │   │   ├── Footer.jsx
+│   │   │   ├── ScoreRing.jsx
+│   │   │   └── RecordingWave.jsx
+│   │   ├── context/AuthContext.jsx
+│   │   ├── data/
+│   │   │   ├── tasks.js          # 8 speech task definitions
+│   │   │   └── conditions.js     # 8 clinical condition presets
+│   │   └── index.css             # CSS variables (MemoryTell forest green brand)
+│   ├── public/
+│   │   ├── memorytell-logo.png   # Wordmark (header, footer, patient summary)
+│   │   └── memorytell-icon.png   # Favicon
+│   └── index.html
 └── README.md
 ```
 
 ---
 
-## Scoring reference
+## Regulatory documentation
 
-All scores are 0–100. Higher = better preserved function.
+A full IEC 62304 Class B software lifecycle document suite is in `docs/`. All documents are available as both Markdown (`.md`) and Word (`.docx`).
 
-| Score | Formula inputs |
-|-------|---------------|
-| Motor speech | Articulation rate, pause count (≥300ms), HNR |
-| Semantic memory | High-frequency word ratio, semantic granularity, topic coherence |
-| Episodic memory | First-person ratio, disfluency count, type-token ratio |
-| Emotional processing | Neutral affect excess (penalises flat affect) |
-| Composite | Mean of all four domain scores |
-
-**Risk flags:**
-- **Low risk:** composite ≥ 70
-- **Moderate risk:** composite 45–69
-- **Elevated risk:** composite < 45
+| Document | ID | Description |
+|----------|----|-------------|
+| Software Requirements Specification | CA-SRS-001 | ~80 functional, safety, security, and performance requirements |
+| Software Architecture Description | CA-SAD-001 | 5 software items, pipeline architecture, security architecture |
+| Software Development Plan | CA-SDP-001 | Lifecycle model, roles, tools, coding standards, release criteria |
+| Software Verification Plan | CA-SVP-001 | 30 test cases across 10 requirement groups |
+| Risk Management File | CA-RMF-001 | ISO 14971 hazard analysis — 10 hazards, all residual risks acceptable |
+| SOUP Evaluation Records | CA-SOUP-001 | 14 third-party components evaluated including CVE review |
+| Software Release Record | CA-SRR-001 | v0.5.0-beta release baseline, known limitations, SDLC checklist |
+| Security Architecture & Threat Model | CA-SEC-001 | STRIDE analysis, production pre-conditions |
 
 ---
 
@@ -248,35 +286,24 @@ All scores are 0–100. Higher = better preserved function.
 
 | Component | License | Commercial use |
 |-----------|---------|----------------|
-| Google Chirp STT | Proprietary | ✅ Pay-per-use ($0.024/min) |
-| Librosa | ISC | ✅ Free |
+| Google Chirp STT | Proprietary | ✅ Pay-per-use |
+| librosa | ISC | ✅ Free |
 | spaCy | MIT | ✅ Free |
 | sentence-transformers (all-mpnet-base-v2) | Apache 2.0 | ✅ Free |
 | j-hartmann/emotion-english-distilroberta-base | Apache 2.0 | ✅ Free |
-| FastAPI | MIT | ✅ Free |
+| FastAPI / SQLAlchemy / python-jose / passlib | MIT / Apache 2.0 | ✅ Free |
 | React / Vite | MIT | ✅ Free |
-
-**Replaced from TELL (non-commercial components):**
-
-| TELL component | License issue | Replacement |
-|----------------|--------------|-------------|
-| OpenAI Whisper | MIT but poor clinical accuracy | Google Chirp |
-| FastText vectors | CC BY-SA (ShareAlike) | sentence-transformers Apache 2.0 |
-| PySentimiento | Non-commercial only | j-hartmann Apache 2.0 |
-| FreeLing | AGPL (SaaS disclosure) | spaCy MIT |
-| PRAAT | GPL | Librosa ISC |
 
 ---
 
-## Background
+## Known limitations (v0.5.0-beta)
 
-This platform is based on the TELL architecture:
+- Scoring algorithms are **not yet clinically validated** on a representative patient population
+- SQLite is suitable for **single-site pilot use** only — migrate to PostgreSQL for multi-clinician production deployment
+- Emotion classifier and STT are **optimised for English** — non-English L1 speakers are flagged on the report but not fully accommodated
+- No automated test suite yet — manual test cases are defined in CA-SVP-001
+- Penetration testing not yet completed — required before production deployment
 
-> García, A.M. et al. (2024). *Toolkit to Examine Lifelike Language v.2.0:
-> Optimizing Speech Biomarkers of Neurodegeneration.*
-> Karger Publishers. DOI: 10.1159/000536878
+---
 
-Relevant datasets for validation:
-- **DementiaBank / Pitt Corpus** — access via [talkbank.org](https://talkbank.org)
-- **ADReSS / ADReSSo** — INTERSPEECH 2020/2021 challenge data, via DementiaBank
-- **PREPARE Challenge** — NIA multilingual dataset (English, Spanish, Mandarin)
+*Developed by St John Lynch & Co. Ltd · © 2026 MemoryTell Ltd. All rights reserved.*
