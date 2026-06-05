@@ -4,6 +4,14 @@ import { useAuth } from "../context/AuthContext";
 
 const API = "http://localhost:8000";
 
+// Date-only strings ("2026-06-05") must be parsed at noon to avoid UTC-to-local
+// timezone shifts producing the wrong day.
+const fmtDate = d => {
+  if (!d) return "";
+  const iso = d.length === 10 ? d + "T12:00:00" : d;
+  return new Date(iso).toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "2-digit" });
+};
+
 // ── Patient-facing bell curve ─────────────────────────────────────────────
 const MU = 70, SIGMA = 15;
 function normalPDF(x) {
@@ -164,7 +172,7 @@ export default function PatientSummaryPage() {
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Date of assessment</div>
-            <div style={{ color: "var(--color-text-primary)" }}>{date_of_assessment}</div>
+            <div style={{ color: "var(--color-text-primary)" }}>{fmtDate(date_of_assessment)}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Clinician</div>
@@ -173,7 +181,7 @@ export default function PatientSummaryPage() {
           {findings_recorded_at && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Findings recorded</div>
-              <div style={{ color: "var(--color-text-primary)" }}>{new Date(findings_recorded_at).toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "numeric" })}</div>
+              <div style={{ color: "var(--color-text-primary)" }}>{fmtDate(findings_recorded_at)}</div>
             </div>
           )}
         </div>
@@ -194,7 +202,7 @@ export default function PatientSummaryPage() {
                 </div>
                 {follow_up_date && (
                   <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "8px 0 0" }}>
-                    Follow-up date: <strong>{new Date(follow_up_date + "T12:00:00").toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "numeric" })}</strong>
+                    Follow-up date: <strong>{fmtDate(follow_up_date)}</strong>
                   </p>
                 )}
               </div>
