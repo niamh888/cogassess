@@ -1,0 +1,86 @@
+export const TASKS = [
+  // ── Original 3 ────────────────────────────────────────────────────────────
+  {
+    id: "routine",
+    domain: "Episodic memory",
+    icon: "ti-calendar",
+    title: "Describe your typical morning",
+    instruction: "Please describe what you usually do from the moment you wake up until midday. Take as much time as you need.",
+    duration: 60,
+    measures: "Narrative coherence, episodic detail, temporal organisation",
+  },
+  {
+    id: "fluency",
+    domain: "Semantic memory",
+    icon: "ti-category",
+    title: "Name as many animals as you can",
+    instruction: "For the next 60 seconds, please say as many different animals as you can think of.",
+    duration: 60,
+    measures: "Semantic retrieval speed, lexical access, category organisation",
+  },
+  {
+    id: "memory",
+    domain: "Emotional processing",
+    icon: "ti-heart",
+    title: "Describe a pleasant memory",
+    instruction: "Please describe a happy or pleasant memory from your life in as much detail as you can.",
+    duration: 45,
+    measures: "Emotional language, autobiographical detail, affective content",
+  },
+
+  // ── Extended battery ───────────────────────────────────────────────────────
+  {
+    id: "fluency_phonological",
+    domain: "Phonological fluency",
+    icon: "ti-letter-case",
+    title: "Name words starting with F",
+    instruction: "For the next 60 seconds, please say as many words as you can that begin with the letter F. Proper names like Fred or France do not count.",
+    duration: 60,
+    measures: "Phonological access, frontal lobe function — S:P ratio vs semantic fluency is a key dementia discriminator",
+  },
+  {
+    id: "read_aloud",
+    domain: "Motor speech",
+    icon: "ti-book-2",
+    title: "Read this passage aloud",
+    instruction: "Please read the following passage aloud at your normal reading pace:",
+    stimulus: "The autumn wind blew gently through the old oak trees. Sarah walked slowly along the path, thinking about the letter she had received that morning. It had been written in careful handwriting on pale blue paper, and it changed everything she thought she knew about her family. She stopped at the bench by the pond and sat down to read it once more.",
+    duration: 45,
+    measures: "Articulation rate, prosody, speech rhythm — separates motor from lexical and semantic issues",
+  },
+  {
+    id: "story_retell",
+    domain: "Encoding & retrieval",
+    icon: "ti-refresh",
+    title: "Retell the story",
+    instruction: "Your clinician has just read you a short story. Please retell it in as much detail as you can remember, in your own words.",
+    clinicianNote: "Read the following story aloud to the patient before handing them the device:\n\n\"Anna was a retired teacher who lived alone in a small house near the sea. One Tuesday morning she found a wallet on the beach. Inside were three hundred euros and a photograph of a young couple. Anna brought the wallet to the local Garda station. The following week the couple came to thank her in person — they had been on their honeymoon when the wallet was lost.\"\n\nOnce you have finished reading, hand the device to the patient and tap Start recording.",
+    duration: 60,
+    measures: "Short-term encoding, immediate free recall, information unit retention — sensitive to TBI and early AD",
+  },
+  {
+    id: "news_event",
+    domain: "Executive function",
+    icon: "ti-news",
+    title: "Describe a recent news event",
+    instruction: "Please describe something you have seen or heard in the news recently. Tell me as much detail as you can about what happened.",
+    duration: 60,
+    measures: "Topic maintenance, working memory, executive organisation of recent semantic information",
+  },
+  {
+    id: "subjective_complaint",
+    domain: "Subjective cognition",
+    icon: "ti-mood-puzzled",
+    title: "How has your memory been?",
+    instruction: "In your own words, please describe how you have been feeling about your memory and thinking recently. Have you noticed any changes?",
+    duration: 45,
+    measures: "Metacognitive awareness, subjective cognitive decline — insight vs anosognosia; dissociation from objective score is clinically meaningful",
+  },
+];
+
+export const DOMAIN_COLORS = {
+  motor_speech:         { bg: "#e1f5ee", text: "#0f6e56", label: "Motor speech" },
+  semantic_memory:      { bg: "#e6f1fb", text: "#185fa5", label: "Semantic memory" },
+  episodic_memory:      { bg: "#eeedfe", text: "#534ab7", label: "Episodic memory" },
+  emotional_processing: { bg: "#faeeda", text: "#854f0b", label: "Emotional processing" },
+};

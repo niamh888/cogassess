@@ -28,12 +28,22 @@ def _to_wav(src: str) -> str:
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import pipeline as hf_pipeline
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import Optional
-import tempfile, os, time, uuid
+from sqlalchemy.orm import Session
+import tempfile, os, time, uuid, json
+from datetime import datetime
+
+from database import Base, engine, get_db
+import models, schemas
+from auth import verify_password, hash_password, create_access_token, get_current_clinician
+
+# Create tables on startup (safe to run repeatedly)
+Base.metadata.create_all(bind=engine)
 
 _nlp = spacy.load("en_core_web_sm")
 _embedder = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
@@ -278,12 +288,13 @@ def analyse_semantics(transcript: str) -> dict:
 
     Model: all-mpnet-base-v2 (Apache 2.0 ✅) — commercial-safe.
     """
-    sentences = [s.strip() for s in transcript.split(".") if s.strip()]
-    if len(sentences) < 2:
-        sentences = transcript.split(",")
+    # Chirp returns unpunctuated transcripts — split into 15-word chunks
+    words = transcript.split()
+    chunk_size = 15
+    chunks = [" ".join(words[i:i + chunk_size]) for i in range(0, len(words), chunk_size) if len(words[i:i + chunk_size]) >= 5]
 
-    if len(sentences) >= 2:
-        embeddings = _embedder.encode(sentences)
+    if len(chunks) >= 2:
+        embeddings = _embedder.encode(chunks)
         dists = [
             1 - cosine_similarity([embeddings[i]], [embeddings[i + 1]])[0][0]
             for i in range(len(embeddings) - 1)
@@ -346,12 +357,17 @@ def compute_scores(acoustic: dict, morphology: dict, semantics: dict, emotion: d
     """
 
     # Motor speech score (0-100)
-    # Articulation component (0-50): peaks at 3.5 syl/sec
-    artic_score = min(acoustic["articulation_rate"] / 3.5 * 50, 50)
-    # Pause penalty (0-30): each meaningful pause costs 3 points
-    pause_penalty = min(acoustic["pause_count"] * 3, 30)
-    # HNR component (0-20): maps typical range (-5 to 15 dB) → (0 to 20)
-    hnr_score = max(0, min((acoustic["hnr_db"] + 5) / 20 * 20, 20))
+    # Articulation component (0-55): peaks at ~3.0 syl/sec for connected speech
+    artic_score = min(acoustic["articulation_rate"] / 3.0 * 55, 55)
+    # Pause frequency penalty: only excess pauses above 10 are clinically significant
+    # (normal connected speech has ~6-10 pauses per minute)
+    excess_pauses = max(0, acoustic["pause_count"] - 10)
+    pause_freq_penalty = min(excess_pauses * 2.0, 15)
+    # Long pause penalty: mean pause >800ms suggests word-finding difficulty
+    long_pause_penalty = min(max(0, (acoustic["mean_pause_duration_ms"] - 800) / 200), 5)
+    pause_penalty = min(pause_freq_penalty + long_pause_penalty, 20)
+    # HNR component (0-15): maps (-5 to 15 dB) → (0 to 15)
+    hnr_score = max(0, min((acoustic["hnr_db"] + 5) / 20 * 15, 15))
     motor_score = max(0, round(artic_score - pause_penalty + hnr_score + 10, 1))
 
     # Semantic memory score (0-100)
@@ -388,28 +404,140 @@ def compute_scores(acoustic: dict, morphology: dict, semantics: dict, emotion: d
     }
 
 
-def generate_report(scores: dict, morphology: dict, acoustic: dict, emotion: dict) -> dict:
-    """Generate a structured clinical report with flagged findings."""
+def generate_report(scores: dict, morphology: dict, acoustic: dict, emotion: dict, semantics: dict) -> dict:
+    """Generate a structured clinical report with contextualised flagged findings.
+
+    Each flag has:
+      label    — short heading
+      severity — "note" (informational) | "watch" (monitor) | "refer" (consider referral)
+      detail   — plain-language explanation with the actual measured value and clinical context
+    """
     flags = []
     recommendations = []
 
+    # ── Motor speech ──────────────────────────────────────────────────────────
+    pc = acoustic["pause_count"]
+    ar = acoustic["articulation_rate"]
     if scores["motor_speech"] < 50:
-        flags.append("Elevated pause frequency and/or reduced articulation rate")
-        recommendations.append("Consider motor speech assessment")
+        flags.append({
+            "label": "Reduced motor speech fluency",
+            "severity": "refer",
+            "detail": (
+                f"{pc} pauses were detected with an articulation rate of {ar} syl/s. "
+                "Both values fall outside the typical range (6–10 pauses/min, 3.0–4.0 syl/s). "
+                "This pattern may indicate disruption to speech motor control. "
+                "Consider formal motor speech assessment."
+            ),
+        })
+        recommendations.append("Consider formal motor speech assessment")
+    elif scores["motor_speech"] < 70:
+        flags.append({
+            "label": "Slightly elevated pause frequency",
+            "severity": "note",
+            "detail": (
+                f"{pc} pauses were detected (typical range: 6–10 per minute). "
+                f"Articulation rate of {ar} syl/s is within the normal range (3.0–4.0 syl/s). "
+                "The slight elevation in pausing is within acceptable variation for spontaneous "
+                "conversational speech. No immediate clinical concern — monitor across repeat sessions."
+            ),
+        })
 
+    # ── Disfluencies (uh, um, er) ─────────────────────────────────────────────
+    dc = morphology["disfluency_count"]
+    if dc >= 7:
+        flags.append({
+            "label": "Word-finding difficulty",
+            "severity": "refer",
+            "detail": (
+                f"{dc} hesitations (uh, um, er) were detected — significantly above the typical "
+                "range of 0–3 for structured speech tasks. This frequency can indicate anomia or "
+                "language retrieval difficulties and warrants further assessment."
+            ),
+        })
+        recommendations.append("Assess for anomia — consider a formal naming task")
+    elif dc >= 4:
+        flags.append({
+            "label": "Mild word-finding hesitation",
+            "severity": "watch",
+            "detail": (
+                f"{dc} hesitations (uh, um, er) were detected. The typical range for structured "
+                "speech tasks is 0–3. This is mildly elevated but not unusual in informal or "
+                "emotionally engaging narrative. Monitor for a progressive increase across sessions."
+            ),
+        })
+        recommendations.append("Monitor disfluency rate across repeat sessions")
+    elif dc >= 2:
+        flags.append({
+            "label": "Natural speech hesitation",
+            "severity": "note",
+            "detail": (
+                f"{dc} hesitations (uh, um, er) were detected. This is within the normal range "
+                "for spontaneous conversational speech and is not clinically significant in isolation. "
+                "Logged here for completeness."
+            ),
+        })
+
+    # ── Semantic memory ───────────────────────────────────────────────────────
     if scores["semantic_memory"] < 50:
-        flags.append("High-frequency word preference — possible semantic memory reduction")
+        hf = round(semantics["high_frequency_word_ratio"] * 100)
+        flags.append({
+            "label": "Reduced vocabulary range",
+            "severity": "refer",
+            "detail": (
+                f"High-frequency word use at {hf}% (expected <35%) and reduced semantic variability "
+                "suggest limited vocabulary access. Over-reliance on generic, common words is associated "
+                "with semantic memory decline. Consider formal semantic fluency assessment."
+            ),
+        })
         recommendations.append("Administer formal semantic fluency task")
+    elif scores["semantic_memory"] < 70:
+        flags.append({
+            "label": "Borderline semantic memory",
+            "severity": "note",
+            "detail": (
+                f"Semantic memory score is {scores['semantic_memory']} — within the moderate range. "
+                "Free narrative tasks tend to score lower than structured fluency tasks due to the "
+                "informal nature of the prompt. Interpret alongside the episodic memory score and "
+                "consider a semantic fluency task for a more targeted measure."
+            ),
+        })
 
-    if morphology["disfluency_count"] >= 3:
-        flags.append(f"Word-finding difficulty markers detected ({morphology['disfluency_count']} disfluencies)")
-        recommendations.append("Monitor for anomia progression")
-
+    # ── Episodic memory ───────────────────────────────────────────────────────
     if scores["episodic_memory"] < 50:
-        flags.append("Reduced first-person narrative perspective — possible episodic memory deficit")
+        fpr = round(morphology["first_person_ratio"] * 100)
+        flags.append({
+            "label": "Reduced personal narrative structure",
+            "severity": "watch",
+            "detail": (
+                f"First-person references at {fpr}% (expected >60% for personal recall tasks). "
+                "Reduced self-referential language in narrative tasks can be an early marker of "
+                "episodic memory changes. Consider follow-up with a structured recall task."
+            ),
+        })
 
-    if emotion["neutral"] > 0.6:
-        flags.append("Reduced emotional expression in speech (flat affect possible)")
+    # ── Emotional processing ──────────────────────────────────────────────────
+    neutral_pct = round(emotion["neutral"] * 100)
+    if emotion["neutral"] > 0.75:
+        flags.append({
+            "label": "Flat affect detected",
+            "severity": "refer",
+            "detail": (
+                f"Neutral emotional tone at {neutral_pct}% — well above the expected threshold of 50%. "
+                "Persistent flat affect in speech can be associated with depression, apathy, or "
+                "neurodegenerative processes. Interpret alongside clinical observation."
+            ),
+        })
+    elif emotion["neutral"] > 0.55:
+        flags.append({
+            "label": "Mildly reduced emotional range",
+            "severity": "watch",
+            "detail": (
+                f"Neutral tone at {neutral_pct}%. A neutral tone above 50% may indicate reduced "
+                "emotional expressivity. This can be normal for reserved speakers or for tasks that "
+                "are not emotionally charged (e.g., a morning routine description). "
+                "Monitor across different task types."
+            ),
+        })
 
     overall_risk = (
         "low" if scores["composite"] >= 70
@@ -421,8 +549,10 @@ def generate_report(scores: dict, morphology: dict, acoustic: dict, emotion: dic
         "overall_risk": overall_risk,
         "flags": flags,
         "recommendations": recommendations,
-        "note": "This output is indicative only and requires clinical validation. "
-                "Not for use as standalone diagnostic tool.",
+        "note": (
+            "This output is indicative only and requires clinical validation. "
+            "Not for use as standalone diagnostic tool."
+        ),
     }
 
 
@@ -455,7 +585,7 @@ async def assess_audio(audio: UploadFile = File(...)):
         semantics = analyse_semantics(stt["transcript"])
         emotion = analyse_emotion(stt["transcript"])
         scores = compute_scores(acoustic, morphology, semantics, emotion)
-        report = generate_report(scores, morphology, acoustic, emotion)
+        report = generate_report(scores, morphology, acoustic, emotion, semantics)
 
         duration = round(time.time() - start_time, 2)
 
@@ -481,3 +611,326 @@ async def assess_audio(audio: UploadFile = File(...)):
 @app.get("/health")
 def health():
     return {"status": "ok", "pipeline_stages": ["chirp_stt", "acoustic", "morphology", "semantics", "emotion"]}
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+@app.post("/auth/login", response_model=schemas.Token)
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    clinician = db.query(models.Clinician).filter(
+        models.Clinician.username == form_data.username
+    ).first()
+    if not clinician or not verify_password(form_data.password, clinician.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+    token = create_access_token({"sub": clinician.username})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "clinician_name": clinician.full_name,
+    }
+
+
+@app.get("/auth/me")
+def me(clinician: models.Clinician = Depends(get_current_clinician)):
+    return {"id": clinician.id, "username": clinician.username, "full_name": clinician.full_name}
+
+
+@app.post("/clinicians", status_code=201)
+def create_clinician(
+    data: schemas.ClinicianCreate,
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),  # must be logged in to add users
+):
+    if db.query(models.Clinician).filter(models.Clinician.username == data.username).first():
+        raise HTTPException(400, "Username already exists")
+    db.add(models.Clinician(
+        username=data.username,
+        hashed_password=hash_password(data.password),
+        full_name=data.full_name,
+    ))
+    db.commit()
+    return {"message": f"Clinician '{data.username}' created"}
+
+
+# ── Patients ──────────────────────────────────────────────────────────────────
+
+@app.post("/patients", response_model=schemas.PatientOut, status_code=201)
+def create_patient(
+    data: schemas.PatientCreate,
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    if db.query(models.Patient).filter(models.Patient.patient_ref == data.patient_ref).first():
+        raise HTTPException(400, "Patient reference already exists — choose a unique ID")
+    patient = models.Patient(**data.model_dump())
+    db.add(patient)
+    db.commit()
+    db.refresh(patient)
+    return patient
+
+
+@app.get("/patients", response_model=list[schemas.PatientOut])
+def list_patients(
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    return db.query(models.Patient).order_by(models.Patient.patient_ref).all()
+
+
+@app.get("/patients/{patient_ref}", response_model=schemas.PatientOut)
+def get_patient(
+    patient_ref: str,
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    patient = db.query(models.Patient).filter(models.Patient.patient_ref == patient_ref).first()
+    if not patient:
+        raise HTTPException(404, "Patient not found")
+    return patient
+
+
+# ── Assessments ───────────────────────────────────────────────────────────────
+
+@app.post("/assessments", status_code=201)
+def create_assessment(
+    data: schemas.AssessmentCreate,
+    db: Session = Depends(get_db),
+    clinician: models.Clinician = Depends(get_current_clinician),
+):
+    patient = db.query(models.Patient).filter(
+        models.Patient.patient_ref == data.patient_ref
+    ).first()
+    if not patient:
+        raise HTTPException(404, "Patient not found — create the patient record first")
+
+    assessment = models.Assessment(
+        assessment_key=str(uuid.uuid4()),
+        patient_id=patient.id,
+        clinician_id=clinician.id,
+        date_of_assessment=data.date_of_assessment,
+        assessment_type=data.assessment_type,
+        referral_source=data.referral_source,
+        reason=data.reason,
+        notes=data.notes,
+        selected_tasks=json.dumps(data.selected_tasks),
+        environment=data.environment,
+        had_interruptions=data.had_interruptions,
+        interruption_notes=data.interruption_notes,
+    )
+    db.add(assessment)
+    db.commit()
+    db.refresh(assessment)
+    # Set human-readable reference now that we have the auto-increment ID
+    assessment.assessment_ref = f"CA-{assessment.created_at.year}-{assessment.id:04d}"
+    db.commit()
+    return {"assessment_key": assessment.assessment_key, "assessment_ref": assessment.assessment_ref, "id": assessment.id}
+
+
+@app.get("/assessments")
+def list_assessments(
+    db: Session = Depends(get_db),
+    clinician: models.Clinician = Depends(get_current_clinician),
+):
+    rows = (
+        db.query(models.Assessment)
+        .order_by(models.Assessment.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    return [
+        {
+            "id": a.id,
+            "assessment_key": a.assessment_key,
+            "patient_ref": a.patient.patient_ref,
+            "assessment_ref": a.assessment_ref,
+            "clinician_name": a.clinician.full_name,
+            "date_of_assessment": a.date_of_assessment,
+            "assessment_type": a.assessment_type,
+            "status": a.status,
+            "task_count": len(a.task_results),
+            "created_at": a.created_at.isoformat(),
+        }
+        for a in rows
+    ]
+
+
+@app.get("/assessments/{assessment_key}")
+def get_assessment(
+    assessment_key: str,
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    a = db.query(models.Assessment).filter(
+        models.Assessment.assessment_key == assessment_key
+    ).first()
+    if not a:
+        raise HTTPException(404, "Assessment not found")
+    return {
+        "id": a.id,
+        "assessment_key": a.assessment_key,
+        "patient_ref": a.patient.patient_ref,
+        "patient": {
+            "patient_ref": a.patient.patient_ref,
+            "date_of_birth": a.patient.date_of_birth,
+            "age_band": a.patient.age_band,
+            "language": a.patient.language,
+        },
+        "clinician_name": a.clinician.full_name,
+        "date_of_assessment": a.date_of_assessment,
+        "assessment_type": a.assessment_type,
+        "assessment_ref": a.assessment_ref,
+        "referral_source": a.referral_source,
+        "reason": a.reason,
+        "notes": a.notes,
+        "environment": a.environment,
+        "had_interruptions": a.had_interruptions,
+        "interruption_notes": a.interruption_notes,
+        "l1_language": a.patient.l1_language,
+        "status": a.status,
+        "selected_tasks": json.loads(a.selected_tasks or '["routine","fluency","memory"]'),
+        "clinical_outcome": a.clinical_outcome,
+        "follow_up_period": a.follow_up_period,
+        "follow_up_date": a.follow_up_date,
+        "clinical_notes_findings": a.clinical_notes_findings,
+        "patient_summary": a.patient_summary,
+        "findings_recorded_at": a.findings_recorded_at.isoformat() if a.findings_recorded_at else None,
+        "created_at": a.created_at.isoformat(),
+        "task_results": [
+            {
+                "task_index": t.task_index,
+                "task_id": t.task_id,
+                "transcript": t.transcript,
+                "scores": json.loads(t.scores),
+                "pipeline": json.loads(t.pipeline) if t.pipeline else None,
+                "report": json.loads(t.report),
+                "recorded_at": t.recorded_at.isoformat(),
+            }
+            for t in a.task_results
+        ],
+    }
+
+
+# ── Task submission (DB-backed assess endpoint) ───────────────────────────────
+
+@app.post("/assessments/{assessment_key}/tasks/{task_index}")
+async def submit_task(
+    assessment_key: str,
+    task_index: int,
+    task_id: str,
+    audio: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    """
+    Run the speech analysis pipeline and persist the result to the database.
+    Replaces the legacy /assess endpoint for authenticated sessions.
+    """
+    assessment = db.query(models.Assessment).filter(
+        models.Assessment.assessment_key == assessment_key
+    ).first()
+    if not assessment:
+        raise HTTPException(404, "Assessment not found")
+    if assessment.status == "complete":
+        raise HTTPException(400, "Assessment is already complete")
+
+    if not audio.content_type or not audio.content_type.startswith("audio/"):
+        raise HTTPException(400, "File must be an audio file")
+
+    suffix = "." + (audio.filename or "audio.webm").split(".")[-1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(await audio.read())
+        tmp_path = tmp.name
+
+    try:
+        stt       = transcribe_audio(tmp_path)
+        acoustic  = extract_acoustic_features(tmp_path)
+        morphology = analyse_morphology(stt["transcript"])
+        semantics = analyse_semantics(stt["transcript"])
+        emotion   = analyse_emotion(stt["transcript"])
+        scores    = compute_scores(acoustic, morphology, semantics, emotion)
+        report    = generate_report(scores, morphology, acoustic, emotion, semantics)
+
+        pipeline_data = {
+            "stt": stt, "acoustic": acoustic,
+            "morphology": morphology, "semantics": semantics, "emotion": emotion,
+        }
+
+        # Upsert — replace if this task_index was already submitted
+        existing = db.query(models.TaskResult).filter(
+            models.TaskResult.assessment_id == assessment.id,
+            models.TaskResult.task_index == task_index,
+        ).first()
+        if existing:
+            existing.transcript = stt["transcript"]
+            existing.scores     = json.dumps(scores)
+            existing.pipeline   = json.dumps(pipeline_data)
+            existing.report     = json.dumps(report)
+        else:
+            db.add(models.TaskResult(
+                assessment_id = assessment.id,
+                task_index    = task_index,
+                task_id       = task_id,
+                transcript    = stt["transcript"],
+                scores        = json.dumps(scores),
+                pipeline      = json.dumps(pipeline_data),
+                report        = json.dumps(report),
+            ))
+
+        # Mark complete when all selected tasks are submitted
+        db.flush()
+        total_selected = len(json.loads(assessment.selected_tasks or '["routine","fluency","memory"]'))
+        if db.query(models.TaskResult).filter(
+            models.TaskResult.assessment_id == assessment.id
+        ).count() >= total_selected:
+            assessment.status = "complete"
+
+        db.commit()
+
+        return {
+            "session_id": assessment_key,
+            "task_index": task_index,
+            "transcript": stt["transcript"],
+            "duration_seconds": 0,
+            "pipeline": pipeline_data,
+            "scores": scores,
+            "report": report,
+        }
+    finally:
+        os.unlink(tmp_path)
+
+
+# ── Clinical findings ─────────────────────────────────────────────────────────
+
+@app.put("/assessments/{assessment_key}/findings")
+def save_findings(
+    assessment_key: str,
+    data: schemas.FindingsCreate,
+    db: Session = Depends(get_db),
+    clinician: models.Clinician = Depends(get_current_clinician),
+):
+    a = db.query(models.Assessment).filter(
+        models.Assessment.assessment_key == assessment_key
+    ).first()
+    if not a:
+        raise HTTPException(404, "Assessment not found")
+    if a.clinician_id != clinician.id:
+        raise HTTPException(403, "Not your assessment")
+
+    a.clinical_outcome          = data.clinical_outcome
+    a.follow_up_period          = data.follow_up_period
+    a.follow_up_date            = data.follow_up_date
+    a.clinical_notes_findings   = data.clinical_notes_findings
+    a.patient_summary           = data.patient_summary
+    a.findings_recorded_at      = datetime.utcnow()
+    db.commit()
+
+    return {
+        "status": "ok",
+        "findings_recorded_at": a.findings_recorded_at.isoformat(),
+    }

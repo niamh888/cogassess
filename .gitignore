@@ -12,6 +12,9 @@ venv/
 node_modules/
 dist/
 
+# Database (contains patient data — never commit)
+*.db
+
 # Env / secrets
 .env
 *.json.key

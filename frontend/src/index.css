@@ -17,11 +17,22 @@
   --color-background-warning:   #faeeda;
   --color-background-danger:    #faece7;
 
+  /* Accent / brand */
+  --color-accent: #185fa5;
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+
   /* Borders */
-  --color-border-tertiary: #e5e7eb;
+  --color-border-primary:   #e5e7eb;
+  --color-border-tertiary:  #e5e7eb;
   --color-border-secondary: #d1d5db;
-  --color-border-warning:  #f5d08a;
-  --color-border-danger:   #f3b8a8;
+  --color-border-warning:   #f5d08a;
+  --color-border-danger:    #f3b8a8;
+  --color-border-info:      #a8cbf5;
+
+  /* Info state */
+  --color-background-info: #e6f1fb;
 
   /* Radii */
   --border-radius-md: 6px;
@@ -48,3 +59,102 @@ button {
 }
 
 button:hover { background: #f3f4f6; }
+.footer-link:hover { background: none !important; text-decoration: none; }
+
+/* Visible focus ring for keyboard and switch navigation */
+:focus-visible {
+  outline: 3px solid #185fa5;
+  outline-offset: 2px;
+  border-radius: var(--border-radius-md);
+}
+
+/* Remove default outline only when focus-visible is supported */
+:focus:not(:focus-visible) { outline: none; }
+
+/* Skip-to-content link for screen readers */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  background: #185fa5;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: var(--border-radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 9999;
+  text-decoration: none;
+}
+.skip-link:focus { top: 1rem; }
+
+/* Responsive report layout */
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 768px) {
+  .report-grid {
+    grid-template-columns: 1fr 380px;
+  }
+}
+
+/* Sticky explainer on wide screens */
+@media (min-width: 768px) {
+  .explainer-panel {
+    position: sticky;
+    top: 1.5rem;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+  }
+}
+
+/* Explainer panel body */
+.explainer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+.explainer-body--hidden { display: none; }
+
+/* On wide screens: always show explainer, hide toggle button */
+@media (min-width: 768px) {
+  .explainer-toggle { display: none !important; }
+  .explainer-body--hidden { display: flex !important; }
+}
+
+/* Touch-friendly buttons on mobile */
+@media (max-width: 480px) {
+  button { padding: 14px !important; font-size: 16px !important; }
+  h1 { font-size: 18px !important; }
+  h2 { font-size: 17px !important; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes indeterminate {
+  0%   { transform: translateX(-100%); }
+  50%  { transform: translateX(150%); }
+  100% { transform: translateX(150%); }
+}
+
+/* Respect user motion preferences — disable all animations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print: hide navigation chrome, show only the document */
+@media print {
+  .no-print { display: none !important; }
+  header, footer, nav { display: none !important; }
+  body { background: #fff !important; }
+}
