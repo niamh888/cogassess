@@ -1,0 +1,21 @@
+# PDFs (lecture/reference material — not part of the codebase)
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# Env / secrets
+.env
+*.json.key
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,24 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+pydantic==2.8.2
+
+# Stage 1 – Speech-to-Text (Google Chirp)
+google-cloud-speech==2.27.0
+
+# Stage 2 – Acoustic features
+librosa==0.10.2
+soundfile==0.12.1
+speechbrain==1.0.2
+
+# Stage 3 – Morphological tagging
+spacy==3.7.5
+# After install: python -m spacy download en_core_web_sm
+
+# Stage 4 – Semantic embeddings
+sentence-transformers==3.1.1
+scikit-learn==1.5.2
+
+# Stage 5 – Emotion detection
+transformers==4.44.2
+torch==2.4.1
