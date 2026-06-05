@@ -4,6 +4,7 @@ Commercial stack: Chirp STT | spaCy morphology | sentence-transformers embedding
                  j-hartmann emotion | librosa acoustics
 """
 
+import os
 import spacy
 import numpy as np
 import librosa
@@ -12,8 +13,9 @@ import subprocess
 from google.cloud.speech_v2 import SpeechClient
 from google.cloud.speech_v2.types import cloud_speech
 
-FFMPEG = r"C:\Users\Niamh\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.1-full_build\bin\ffmpeg.exe"
-GCP_PROJECT = "project-e61ab50a-3782-4e35-814"
+# Set FFMPEG_PATH in your environment, or it defaults to the system PATH
+FFMPEG = os.environ.get("FFMPEG_PATH", "ffmpeg")
+GCP_PROJECT = os.environ.get("GCP_PROJECT_ID", "project-e61ab50a-3782-4e35-814")
 
 def _to_wav(src: str) -> str:
     """Convert any audio format to 16kHz mono wav using ffmpeg."""
