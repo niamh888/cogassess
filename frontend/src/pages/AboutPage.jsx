@@ -27,7 +27,7 @@ export default function AboutPage() {
 
       <div style={{ marginTop: 24, marginBottom: 32 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 6px", color: "var(--color-text-primary)" }}>About CogAssess</h1>
-        <p style={{ fontSize: 13, color: "var(--color-text-tertiary)", margin: 0 }}>Version {VERSION} · {BUILD_DATE}</p>
+        <p style={{ fontSize: 13, color: "var(--color-text-tertiary)", margin: 0 }}>Version {VERSION} · {new Date(BUILD_DATE + "T12:00:00").toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "2-digit" })}</p>
       </div>
 
       {/* Clinical disclaimer */}
