@@ -22,7 +22,7 @@ const SECURITY = [
 
 export default function AboutPage() {
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "2rem 1rem" }}>
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1rem" }}>
       <Link to="/dashboard" style={{ fontSize: 13, color: "var(--color-text-secondary)", textDecoration: "none" }}>← Dashboard</Link>
 
       <div style={{ marginTop: 24, marginBottom: 32 }}>
@@ -32,7 +32,7 @@ export default function AboutPage() {
 
       {/* Clinical disclaimer */}
       <div style={{ background: "var(--color-background-warning)", border: "0.5px solid var(--color-border-warning)", borderRadius: "var(--border-radius-md)", padding: "14px 18px", marginBottom: 32, fontSize: 14, color: "var(--color-text-warning)", lineHeight: 1.6 }}>
-        <strong>For clinician use only.</strong> Results are speech biomarker indicators — not a diagnosis. They must be interpreted by a qualified clinician and must not be shared directly with patients.
+        <strong>For clinician use only.</strong> Results are speech biomarker indicators — not a diagnosis. They should be interpreted by a qualified clinician and should not be shared directly with patients.
       </div>
 
       {/* How it works */}
