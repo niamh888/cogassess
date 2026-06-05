@@ -4,7 +4,11 @@ test_security.py — Security and token tests for CogAssess.
 Test cases:
   TC-SEC-001: Password is stored as bcrypt hash, not plaintext
   TC-SEC-002: JWT uses HS256 algorithm
+  TC-SEC-003: Temporary audio file is deleted after pipeline processing  [SKIP — GCP]
+  TC-SEC-004: All data in transit uses HTTPS                             [SKIP — deployment]
   TC-REP-001: Clinical report requires authentication
+  TC-REP-002: Clinician can only access their own assessments            [SKIP — multi-user]
+  TC-REP-003: Completed report contains all four domain scores           [SKIP — GCP]
 """
 
 import base64
@@ -137,3 +141,90 @@ def test_clinical_report_requires_authentication(client, test_assessment_key):
         f"Expected 401 for unauthenticated GET /assessments, "
         f"got {response_list_no_auth.status_code}"
     )
+
+
+# ── TC-REP-002 ────────────────────────────────────────────────────────────────
+
+@pytest.mark.multi_user
+@pytest.mark.skip(
+    reason="Requires a second clinician account — create a 'clinician_b' fixture "
+           "and verify that assessments created by clinician_a are not returned "
+           "when clinician_b calls GET /assessments. Remove this skip once the "
+           "multi-user fixture is added to conftest.py."
+)
+def test_clinician_can_only_access_own_assessments(client, auth_headers):
+    """
+    TC-REP-002: Clinician can only access their own assessments.
+
+    Creates an assessment as clinician_a, then logs in as clinician_b and
+    verifies that the assessment does not appear in GET /assessments and that
+    GET /assessments/{key} returns 403 or 404.
+
+    PREREQUISITE: A second clinician account fixture (clinician_b) in conftest.py.
+    Remove @pytest.mark.skip once the multi-user fixture is available.
+    """
+    pass
+
+
+# ── TC-REP-003 ────────────────────────────────────────────────────────────────
+
+@pytest.mark.gcp
+@pytest.mark.skip(
+    reason="Requires a completed pipeline run with real GCP audio — the report "
+           "endpoint only returns all four domain scores after the full pipeline "
+           "has run with genuine audio. Remove this skip once TC-PIP-001 passes."
+)
+def test_completed_report_contains_all_four_domain_scores(client, auth_headers):
+    """
+    TC-REP-003: Completed report contains all four domain scores.
+
+    Runs the full pipeline with a real audio file, then calls GET /assessments/{key}
+    and verifies that task_results contains scores for motor_speech,
+    semantic_memory, episodic_memory, and emotional_processing.
+
+    PREREQUISITE: GCP_PROJECT_ID set and valid Application Default Credentials.
+    Remove @pytest.mark.skip once GCP credentials are available.
+    """
+    pass
+
+
+# ── TC-SEC-003 ────────────────────────────────────────────────────────────────
+
+@pytest.mark.gcp
+@pytest.mark.skip(
+    reason="Requires a real pipeline run — the temp .wav file is only written when "
+           "actual audio is processed via ffmpeg and GCP. Remove this skip once "
+           "TC-PIP-001 is passing and the fixture provides a real audio file."
+)
+def test_temp_audio_file_deleted_after_pipeline(client, auth_headers, test_assessment_key):
+    """
+    TC-SEC-003: Temporary audio file is deleted after pipeline processing.
+
+    Posts a real audio file, captures the temp file path from the pipeline,
+    and verifies that os.path.exists(tmp_path) is False after the request completes.
+
+    PREREQUISITE: GCP_PROJECT_ID set; requires a real audio fixture.
+    Remove @pytest.mark.skip once GCP credentials are available.
+    """
+    pass
+
+
+# ── TC-SEC-004 ────────────────────────────────────────────────────────────────
+
+@pytest.mark.deployment
+@pytest.mark.skip(
+    reason="Requires production HTTPS deployment — TLS enforcement cannot be "
+           "verified against localhost. Run this test against the deployed URL "
+           "using an HTTPS client check. Remove this skip for deployment verification."
+)
+def test_all_data_in_transit_uses_https():
+    """
+    TC-SEC-004: All data in transit uses HTTPS.
+
+    Verifies that the production deployment redirects HTTP to HTTPS and that
+    the TLS certificate is valid (not self-signed, not expired).
+
+    PREREQUISITE: Production HTTPS deployment with a valid certificate.
+    Remove @pytest.mark.skip when running post-deployment verification.
+    """
+    pass

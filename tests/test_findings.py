@@ -5,8 +5,12 @@ Test cases:
   TC-FIND-001: Clinical findings are persisted to the database
   TC-FIND-002: Internal notes are accessible to clinicians but not exposed on
                patient-facing surfaces (frontend check is marked MANUAL)
-  TC-FIND-AUDIT: Amendment requires change_reason; initial save does not
+  TC-SAF-001:  Amendment requires change_reason; audit trail records every save
+  TC-SAF-002:  Temporary audio file is deleted after pipeline  [SKIP — GCP]
+  TC-SAF-003:  Empty transcript guard triggers before any scoring occurs  [SKIP — GCP]
 """
+
+import pytest
 
 from datetime import date
 
@@ -187,3 +191,51 @@ def test_amendment_requires_change_reason(client, auth_headers, test_assessment_
     assert history[1]["action"] == "amendment", (
         f"Second history entry should be 'amendment', got '{history[1]['action']}'"
     )
+
+
+# ── TC-SAF-002 ────────────────────────────────────────────────────────────────
+
+@pytest.mark.gcp
+@pytest.mark.skip(
+    reason="Requires a real pipeline run — the temp .wav file only exists when "
+           "actual audio is processed via ffmpeg and GCP STT. This overlaps with "
+           "TC-SEC-003 and should be verified together. Remove this skip once "
+           "GCP credentials are available in the test environment."
+)
+def test_temp_file_deleted_after_pipeline_safety(client, auth_headers, test_assessment_key):
+    """
+    TC-SAF-002: Temporary audio file is deleted after pipeline processing.
+
+    Safety perspective: an undeleted audio file on disk constitutes a patient
+    data residue risk under GDPR / data minimisation principles.
+
+    Verifies that after a successful pipeline run, no temporary .wav files
+    remain in the working directory or system temp folder.
+
+    PREREQUISITE: GCP_PROJECT_ID set and valid Application Default Credentials.
+    Remove @pytest.mark.skip once GCP credentials are available.
+    """
+    pass
+
+
+# ── TC-SAF-003 ────────────────────────────────────────────────────────────────
+
+@pytest.mark.gcp
+@pytest.mark.skip(
+    reason="Requires a real GCP call to confirm the guard fires before STT returns "
+           "any result — the mocked version in TC-PIP-004 covers the code path but "
+           "not the live integration. Remove this skip once GCP credentials are available."
+)
+def test_empty_transcript_guard_fires_before_scoring_live(client, auth_headers, test_assessment_key):
+    """
+    TC-SAF-003: Empty transcript guard triggers before any scoring occurs (live GCP).
+
+    Complements TC-PIP-004 (mocked) by verifying the same behaviour against a
+    real GCP STT call using a silent audio file — ensuring no scores are
+    produced and no TaskResult row is written to the database.
+
+    PREREQUISITE: GCP_PROJECT_ID set, Application Default Credentials, and a
+    silent audio fixture at tests/fixtures/silent.wav.
+    Remove @pytest.mark.skip once GCP credentials are available.
+    """
+    pass

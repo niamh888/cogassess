@@ -10,6 +10,7 @@ Exit code: 0 if all tests passed, 1 if any failed.
 
 from __future__ import annotations
 
+import getpass
 import os
 import re
 import sys
@@ -73,8 +74,15 @@ class _CogAssessPlugin:
 
     # ------------------------------------------------------------------
     def pytest_runtest_logreport(self, report):
-        """Collect call-phase reports only."""
-        if report.when != "call":
+        """
+        Collect results from:
+          - 'call' phase for passed/failed tests
+          - 'setup' phase for skipped tests (mark.skip fires before call)
+        """
+        if report.skipped and report.when == "setup":
+            # pytest.mark.skip fires at setup — capture it here
+            pass
+        elif report.when != "call":
             return
 
         # Duration comes from the report; convert to milliseconds
@@ -93,7 +101,7 @@ class _CogAssessPlugin:
             error  = None
         elif report.skipped:
             status = "SKIP"
-            error  = None
+            error  = self._extract_skip_reason(report)
         else:
             status = "FAIL"
             error  = self._extract_error(report)
@@ -148,6 +156,20 @@ class _CogAssessPlugin:
 
     # ------------------------------------------------------------------
     @staticmethod
+    def _extract_skip_reason(report) -> str | None:
+        """Return the skip reason string from a skipped report's longrepr."""
+        try:
+            # longrepr for pytest.mark.skip is a tuple: (file, lineno, "Skipped: reason")
+            longrepr = report.longrepr
+            if isinstance(longrepr, tuple) and len(longrepr) == 3:
+                reason = str(longrepr[2])
+                return reason.replace("Skipped: ", "").strip()[:200]
+            return str(longrepr)[:200]
+        except Exception:
+            return None
+
+    # ------------------------------------------------------------------
+    @staticmethod
     def _extract_error(report) -> str | None:
         """Return a one-line error string from a failed report's longrepr."""
         if not report.longrepr:
@@ -172,7 +194,7 @@ def _ensure_logs_dir():
     os.makedirs(LOGS_DIR, exist_ok=True)
 
 
-def _write_test_log(run_id: str, run_dt: datetime, results: list[TestResult]) -> str:
+def _write_test_log(run_id: str, run_dt: datetime, results: list[TestResult], tester: str) -> str:
     """Write the per-run test log and return its file path."""
     _ensure_logs_dir()
 
@@ -189,13 +211,14 @@ def _write_test_log(run_id: str, run_dt: datetime, results: list[TestResult]) ->
         "",
         f"**Run ID:** {run_id}  ",
         f"**Date:** {date_str}  ",
+        f"**Tester:** {tester}  ",
         f"**Total:** {total} | **Passed:** {passed} | **Failed:** {failed} | **Skipped:** {skipped}  ",
         f"**Outcome:** {outcome}",
         "",
         "---",
         "",
-        "| Test Case ID | Test Name | Status | Duration (ms) |",
-        "|---|---|---|---|",
+        "| Test Case ID | Test Name | Status | Duration (ms) | Notes |",
+        "|---|---|---|---|---|",
     ]
 
     for r in results:
@@ -206,8 +229,9 @@ def _write_test_log(run_id: str, run_dt: datetime, results: list[TestResult]) ->
         else:
             status_cell = "⏭ SKIP"
 
+        notes = r.error or ""
         lines.append(
-            f"| {r.tc_id} | {r.func_name} | {status_cell} | {r.duration_ms} |"
+            f"| {r.tc_id} | {r.func_name} | {status_cell} | {r.duration_ms} | {notes} |"
         )
 
     log_filename = f"test_log_{run_dt.strftime('%Y%m%d-%H%M%S')}.md"
@@ -232,6 +256,7 @@ def _write_anomaly_log(
     run_id: str,
     run_dt: datetime,
     failures: list[TestResult],
+    tester: str,
 ):
     """Append failure entries to the persistent anomaly log."""
     _ensure_logs_dir()
@@ -260,6 +285,7 @@ def _write_anomaly_log(
             f"| Field | Value |\n"
             f"|---|---|\n"
             f"| Run ID | {run_id} |\n"
+            f"| Tester | {tester} |\n"
             f"| Test function | {failure.func_name} |\n"
             f"| SVP reference | {failure.tc_id} |\n"
             f"| Error | {failure.error or 'No error detail captured'} |\n"
@@ -280,6 +306,7 @@ def _write_anomaly_log(
 def main() -> int:
     run_dt = datetime.now()
     run_id = f"TR-{run_dt.strftime('%Y%m%d-%H%M%S')}"
+    tester = getpass.getuser()
 
     plugin = _CogAssessPlugin()
 
@@ -298,9 +325,9 @@ def main() -> int:
     failures = [r for r in results if r.status == "FAIL"]
 
     # Write logs
-    log_path = _write_test_log(run_id, run_dt, results)
+    log_path = _write_test_log(run_id, run_dt, results, tester)
     if failures:
-        _write_anomaly_log(run_id, run_dt, failures)
+        _write_anomaly_log(run_id, run_dt, failures, tester)
 
     # Console summary
     total   = len(results)

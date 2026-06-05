@@ -3,8 +3,11 @@ test_patients.py — Patient record tests for CogAssess.
 
 Test cases:
   TC-PAT-001: Patient record uses pseudonymised reference, no name field stored
+  TC-PAT-002: Age band is auto-calculated from date of birth in the UI  [SKIP — browser]
   TC-PAT-003: Non-English L1 language stored correctly
 """
+
+import pytest
 
 
 # ── TC-PAT-001 ────────────────────────────────────────────────────────────────
@@ -104,3 +107,24 @@ def test_non_english_l1_language_stored_correctly(client, auth_headers):
     assert matching[0]["l1_language"] == "Irish", (
         f"l1_language in list response is '{matching[0]['l1_language']}', expected 'Irish'"
     )
+
+
+# ── TC-PAT-002 ────────────────────────────────────────────────────────────────
+
+@pytest.mark.browser
+@pytest.mark.skip(
+    reason="Requires browser automation — age band auto-calculation is a frontend "
+           "behaviour triggered by the date-of-birth picker in IntakePage.jsx. "
+           "Prerequisite: configure Playwright E2E tests and remove this skip."
+)
+def test_age_band_auto_calculated_from_date_of_birth():
+    """
+    TC-PAT-002: Age band is auto-calculated from date of birth in the UI.
+
+    Verifies that entering a date of birth in the intake form automatically
+    populates the age band field with the correct decade band (e.g. '55-64').
+
+    PREREQUISITE: Playwright E2E test framework.
+    Remove @pytest.mark.skip once browser automation is configured.
+    """
+    pass

@@ -155,6 +155,17 @@ app.dependency_overrides[get_db] = _override_get_db
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Register custom markers so pytest does not warn about unknown marks
+# ─────────────────────────────────────────────────────────────────────────────
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "browser: requires browser automation (e.g. Playwright)")
+    config.addinivalue_line("markers", "gcp: requires live Google Cloud Chirp STT connection")
+    config.addinivalue_line("markers", "deployment: requires production HTTPS deployment")
+    config.addinivalue_line("markers", "multi_user: requires a second clinician account fixture")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 4.  Session-scoped fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
