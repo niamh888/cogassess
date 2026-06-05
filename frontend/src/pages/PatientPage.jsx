@@ -101,6 +101,13 @@ export default function PatientPage() {
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
+      if (res.status === 422) {
+        // No speech detected — let the patient try this task again
+        const body = await res.json().catch(() => ({}));
+        setErrorMsg(body.detail ?? "No speech detected. Please speak clearly and try again.");
+        setPhase("ready");
+        return;
+      }
       if (!res.ok) throw new Error(`Submission error (${res.status})`);
       if (taskIdx + 1 >= selectedTasks.length) {
         setPhase("done");

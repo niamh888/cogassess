@@ -849,6 +849,16 @@ async def submit_task(
 
     try:
         stt       = transcribe_audio(tmp_path)
+
+        # Guard: require a minimum meaningful transcript before scoring.
+        # An empty or near-empty transcript means no speech was detected —
+        # running the pipeline on silence produces spuriously high semantic scores.
+        if len(stt["transcript"].strip().split()) < 5:
+            raise HTTPException(
+                status_code=422,
+                detail="No speech detected in this recording. Please speak clearly into the microphone and try again.",
+            )
+
         acoustic  = extract_acoustic_features(tmp_path)
         morphology = analyse_morphology(stt["transcript"])
         semantics = analyse_semantics(stt["transcript"])
