@@ -66,8 +66,8 @@ export default function PatientSummaryPage() {
         <div style={{ borderBottom: "2px solid var(--color-border-primary)", paddingBottom: "1.25rem", marginBottom: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: "var(--color-text-primary)", letterSpacing: "-0.01em" }}>CogAssess</div>
-              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 2 }}>Speech Biomarker Assessment</div>
+              <img src="/memorytell-logo.png" alt="MemoryTell" style={{ height: 30, width: "auto", display: "block", marginBottom: 4 }} />
+              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>CogAssess — Speech Biomarker Assessment</div>
             </div>
             {assessment_ref && (
               <div style={{ textAlign: "right" }}>

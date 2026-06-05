@@ -1,38 +1,44 @@
 :root {
   --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
 
+  /* MemoryTell brand — forest green */
+  --color-brand:        #1e3d2a;   /* primary dark green (logo colour) */
+  --color-brand-mid:    #2d5c3f;   /* slightly lighter for hover states */
+  --color-brand-light:  #e8f2ec;   /* very light green tint for backgrounds */
+  --color-brand-border: #b8d4c0;   /* green-tinted border */
+
   /* Text */
   --color-text-primary:   #111827;
   --color-text-secondary: #4b5563;
   --color-text-tertiary:  #9ca3af;
-  --color-text-success:   #0f6e56;
-  --color-text-info:      #185fa5;
+  --color-text-success:   #1e6b3c;
+  --color-text-info:      #1e3d2a;
   --color-text-warning:   #854f0b;
   --color-text-danger:    #993c1d;
 
   /* Backgrounds */
   --color-background-primary:   #ffffff;
-  --color-background-secondary: #f9fafb;
-  --color-background-success:   #e1f5ee;
+  --color-background-secondary: #f5f8f6;   /* soft green-white */
+  --color-background-success:   #e8f2ec;
   --color-background-warning:   #faeeda;
   --color-background-danger:    #faece7;
 
-  /* Accent / brand */
-  --color-accent: #185fa5;
+  /* Accent / brand — replaces blue with MemoryTell green */
+  --color-accent: #1e3d2a;
 
   /* Surfaces */
   --color-surface: #ffffff;
 
   /* Borders */
-  --color-border-primary:   #e5e7eb;
-  --color-border-tertiary:  #e5e7eb;
-  --color-border-secondary: #d1d5db;
+  --color-border-primary:   #e2e8e4;   /* faint green tint */
+  --color-border-tertiary:  #e2e8e4;
+  --color-border-secondary: #c8d5cc;
   --color-border-warning:   #f5d08a;
   --color-border-danger:    #f3b8a8;
-  --color-border-info:      #a8cbf5;
+  --color-border-info:      #b8d4c0;
 
-  /* Info state */
-  --color-background-info: #e6f1fb;
+  /* Info state (was blue — now green-tinted) */
+  --color-background-info: #e8f2ec;
 
   /* Radii */
   --border-radius-md: 6px;

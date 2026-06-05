@@ -45,14 +45,16 @@ export default function LoginPage() {
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-background-secondary)", padding: "1rem" }}>
       <div style={{ width: "100%", maxWidth: 400, background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-primary)", padding: "2.5rem 2rem" }}>
         <div style={{ marginBottom: "2rem", textAlign: "center" }}>
-          <p style={{ fontSize: 11, letterSpacing: "0.12em", color: "var(--color-text-tertiary)", margin: "0 0 6px", textTransform: "uppercase" }}>
-            Clinician portal
-          </p>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: "var(--color-text-primary)" }}>
+          <img
+            src="/memorytell-logo.png"
+            alt="MemoryTell"
+            style={{ height: 36, width: "auto", display: "block", margin: "0 auto 20px" }}
+          />
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 4px", color: "var(--color-brand)", letterSpacing: "-0.01em" }}>
             CogAssess
           </h1>
-          <p style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 6, marginBottom: 0 }}>
-            Cognitive speech biomarker platform
+          <p style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 4, marginBottom: 0 }}>
+            Clinician portal — speech biomarker assessment
           </p>
         </div>
 
