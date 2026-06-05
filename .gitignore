@@ -19,3 +19,7 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Test artifacts
+test_cogassess.db
+logs/test_log_*.md

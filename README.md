@@ -200,6 +200,60 @@ Expected response:
 
 ---
 
+## Automated testing
+
+The test suite covers 16 test cases mapped to [CA-SVP-001](docs/SVP.md). No GCP account, no ML models, and no running server are required — all heavy dependencies are stubbed at runtime.
+
+### First-time setup (test dependencies only)
+
+```powershell
+pip install pytest "bcrypt<4.0"
+```
+
+> `bcrypt<4.0` is required for compatibility with passlib 1.7.x. If you installed from `requirements.txt` into a venv, run `pip install "bcrypt<4.0"` inside that same venv.
+
+---
+
+### Run the full suite with log output
+
+```powershell
+python run_tests.py
+```
+
+This runs all tests and writes two files to `logs/`:
+
+| File | Purpose |
+|------|---------|
+| `logs/test_log_YYYYMMDD-HHMMSS.md` | Timestamped pass/fail table, one row per test, SVP test case ID linked |
+| `logs/anomaly_log.md` | Append-only failure log; each failure gets an `ANO-NNN` entry with error detail and "Open" status |
+
+Exit code is `0` if all tests pass, `1` if any fail — suitable for CI pipelines.
+
+---
+
+### Run with raw pytest output (no log files)
+
+```powershell
+python -m pytest tests/ -v
+```
+
+---
+
+### Test coverage
+
+| Test file | SVP test cases |
+|-----------|---------------|
+| test_auth.py | TC-AUTH-001, TC-AUTH-002, TC-AUTH-003 |
+| test_assessments.py | TC-ASS-001, TC-ASS-002, TC-ASS-003 |
+| test_findings.py | TC-FIND-001, TC-FIND-002, TC-SAF-001 |
+| test_patients.py | TC-PAT-001, TC-PAT-003 |
+| test_pipeline.py | TC-PIP-002, TC-PIP-004 |
+| test_security.py | TC-SEC-001, TC-SEC-002, TC-REP-001 |
+
+Tests that require a live browser (TC-REC-001, TC-REC-002) and tests that require a GCP connection (TC-PIP-001, TC-PIP-003) are defined in CA-SVP-001 as manual verification steps.
+
+---
+
 ## Clinician workflow
 
 1. **Sign in** at `http://localhost:5173`
@@ -301,7 +355,7 @@ A full IEC 62304 Class B software lifecycle document suite is in `docs/`. All do
 - Scoring algorithms are **not yet clinically validated** on a representative patient population
 - SQLite is suitable for **single-site pilot use** only — migrate to PostgreSQL for multi-clinician production deployment
 - Emotion classifier and STT are **optimised for English** — non-English L1 speakers are flagged on the report but not fully accommodated
-- No automated test suite yet — manual test cases are defined in CA-SVP-001
+- Automated test suite covers 16 of 30 SVP test cases — browser and GCP-dependent cases remain manual
 - Penetration testing not yet completed — required before production deployment
 
 ---
