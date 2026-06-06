@@ -306,7 +306,7 @@ cogassess/
 ├── migrate.py               # Additive schema migrations
 ├── requirements.txt         # Python dependencies
 ├── cogassess.db             # SQLite database (test data only — replace for production)
-├── docs/                    # IEC 62304 Class B SDLC documentation
+├── docs/                    # IEC 62304 Class B / IEC 82304-1 documentation suite
 │   ├── SRS.md / SRS.docx    # CA-SRS-001 Software Requirements Specification
 │   ├── SAD.md / SAD.docx    # CA-SAD-001 Software Architecture Description
 │   ├── SDP.md / SDP.docx    # CA-SDP-001 Software Development Plan
@@ -314,7 +314,15 @@ cogassess/
 │   ├── RMF.md / RMF.docx    # CA-RMF-001 Risk Management File (ISO 14971)
 │   ├── SOUP.md / SOUP.docx  # CA-SOUP-001 SOUP Evaluation Records
 │   ├── SRR.md / SRR.docx    # CA-SRR-001 Software Release Record
-│   └── SEC.md / SEC.docx    # CA-SEC-001 Security Architecture & Threat Model
+│   ├── SEC.md / SEC.docx    # CA-SEC-001 Security Architecture & Threat Model
+│   ├── RTM.md               # CA-RTM-001 Requirements Traceability Matrix
+│   ├── VP.md                # CA-VP-001 Software Validation Plan (IEC 82304-1 §6)
+│   ├── VR.md                # CA-VR-001 Software Validation Report (IEC 82304-1 §6)
+│   ├── DEPLOYMENT.md        # CA-DEP-001 AWS Deployment & Monitoring Guide
+│   ├── IB.md                # CA-IB-001 Investigator's Brochure (clinical investigation)
+│   ├── IB_All_Indications.md         # IB Appendix — all study indications
+│   ├── IB_AppendixA_CRF.md           # IB Appendix A — Case Report Form
+│   └── IB_AppendixC_PIL_ICF.md       # IB Appendix C — PIL / Informed Consent Form
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx               # Routes and layout (ClinicianLayout / PatientLayout)
@@ -348,7 +356,7 @@ cogassess/
 
 ## Regulatory documentation
 
-A full IEC 62304 Class B / IEC 82304-1 software lifecycle document suite is in `docs/`. All documents are available as both Markdown (`.md`) and Word (`.docx`).
+A full IEC 62304 Class B / IEC 82304-1 software lifecycle document suite is in `docs/`. The eight core SDLC documents (SRS through SEC) are available as both Markdown (`.md`) and Word (`.docx`). Newer documents (RTM, VP, VR, DEPLOYMENT, IB suite) are Markdown only.
 
 | Document | ID | Description |
 |----------|----|-------------|
@@ -363,6 +371,7 @@ A full IEC 62304 Class B / IEC 82304-1 software lifecycle document suite is in `
 | Requirements Traceability Matrix | CA-RTM-001 | Full mapping of all ~110 requirements to test cases and verification status |
 | Software Validation Plan | CA-VP-001 | IEC 82304-1 §6 — 5 validation activities, acceptance criteria, release gates |
 | Software Validation Report | CA-VR-001 | IEC 82304-1 §6 — automated results pre-filled; pending sections for FPI |
+| Investigator's Brochure | CA-IB-001 | EU MDR Article 62 clinical investigation — protocol, CRF, PIL/ICF |
 
 ---
 
