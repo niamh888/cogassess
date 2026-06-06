@@ -401,6 +401,15 @@ The following third-party components are incorporated into CogAssess. In accorda
 | SOUP-013 | numpy | Latest stable | NumPy contributors | Numerical computation (pipeline calculations) | Low–Medium — affects score calculation |
 | SOUP-014 | soundfile | Latest stable | libsndfile contributors | Audio file I/O | Low — pre-processing step |
 
+### 9.1 AI/ML Algorithm Locking Requirements
+
+Pre-trained AI/ML models incorporated in the CogAssess pipeline are classified as **locked algorithms** in accordance with FDA AI/ML-Based SaMD guidance and EU MDR 2017/745 Annex I §17. A locked algorithm is one whose model parameters (weights) are fixed and do not change based on new data encountered during clinical operation.
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| SRS-AI-001 | The pre-trained transformer models used in the CogAssess pipeline — Stage SI-04e (all-mpnet-base-v2) and Stage SI-04f (emotion-english-distilroberta-base) — shall be locked algorithms. Model weights shall be fixed at the version evaluated in CA-SOUP-001 and shall not be retrained, fine-tuned, or automatically updated during clinical operation or deployment of CogAssess. | M |
+| SRS-AI-002 | Any update to a locked AI/ML model component shall require a full SOUP re-evaluation per IEC 62304 §8.1.2, re-execution of all verification test cases affected by the change, and change control approval before the updated model is incorporated into a released version of CogAssess. | M |
+
 ---
 
 ## 10. Constraints
@@ -452,6 +461,11 @@ The following matrix maps each functional requirement to its corresponding desig
 | SRS-SEC-002 | JWT HS256 signing | CA-SAD §4.2 | TC-SEC-002 |
 | SRS-SEC-005 | Temp audio file deletion | CA-SAD §4.2 | TC-SEC-003 |
 | SRS-SEC-006 | No PII to third-party services | CA-SAD §4.2 | TC-SEC-004 |
+| SRS-AI-001 | Locked AI/ML model weights — no retraining during clinical use | CA-SAD §4.4, §9.1 | TC-SOUP-001, TC-SOUP-002 |
+| SRS-AI-002 | AI/ML model update requires SOUP re-evaluation and change control | CA-SAD §4.4, §9.1 | — |
+| SRS-SOUP-001 | Safety-relevant SOUP packages have exact version pins | CA-SAD §9 | TC-SOUP-001 |
+| SRS-SOUP-002 | Safety-relevant SOUP packages installed in deployment environment | CA-SAD §9 | TC-SOUP-002 |
+| SRS-SOUP-003 | No HIGH or CRITICAL CVEs in installed SOUP packages | CA-SAD §9 | TC-SOUP-003 |
 
 ---
 

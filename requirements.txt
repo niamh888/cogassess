@@ -4,10 +4,10 @@ python-multipart==0.0.9
 pydantic==2.8.2
 
 # Auth & database
-sqlalchemy>=2.0
+sqlalchemy==2.0.50
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1       # passlib 1.7.4 is not compatible with bcrypt 5.x
-python-jose[cryptography]>=3.3
+python-jose[cryptography]==3.5.0
 
 # Stage 1 – Speech-to-Text (Google Chirp)
 google-cloud-speech==2.27.0

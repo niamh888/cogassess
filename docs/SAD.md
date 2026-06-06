@@ -350,6 +350,22 @@ Analyser   Analyser
   Result (JSON: scores, pipeline, report)
 ```
 
+##### Algorithm Type Classification
+
+In accordance with EU MDR 2017/745 Annex I §17 and FDA AI/ML-Based SaMD guidance, each pipeline stage is classified by algorithm type and lock status. **Locked** algorithms use model weights fixed at the version evaluated in CA-SOUP-001 and are not retrained, fine-tuned, or updated during clinical operation of CogAssess.
+
+| Stage | Sub-item | Algorithm Class | Lock Status |
+|-------|----------|-----------------|-------------|
+| SI-04a | Audio Pre-processor (ffmpeg) | Deterministic — format conversion | Not applicable (no ML) |
+| SI-04b | Speech Recogniser (Google Chirp) | AI inference — deep learning ASR | Locked — API version pinned; model managed by Google LLC |
+| SI-04c | Acoustic Analyser (librosa) | Deterministic — digital signal processing | Not applicable (no ML) |
+| SI-04d | Linguistic Analyser (spaCy en_core_web_sm) | Rule-based NLP with locked statistical model | Locked — model weights pinned to evaluated version per CA-SOUP-001 |
+| SI-04e | Semantic Scorer (all-mpnet-base-v2) | AI inference — pre-trained transformer | **Locked** — weights fixed at evaluated version; CogAssess does not retrain or fine-tune this model |
+| SI-04f | Emotion Classifier (emotion-english-distilroberta-base) | AI inference — pre-trained transformer | **Locked** — weights fixed at evaluated version; CogAssess does not retrain or fine-tune this model |
+| SI-04g | Score Aggregator | Deterministic — weighted arithmetic | Not applicable (no ML) |
+
+**Locked algorithm statement (SRS-AI-001):** The pre-trained AI/ML components in stages SI-04e and SI-04f are locked algorithms. Model weights are fixed at the versions recorded in CA-SOUP-001. No online learning, transfer learning, or weight modification occurs during clinical operation. Any future model update requires a full SOUP re-evaluation, software verification cycle, and change control approval before incorporation into a released version of CogAssess.
+
 #### 4.4.2 SI-04a: Audio Pre-processor
 
 **SOUP:** ffmpeg (SOUP-012)

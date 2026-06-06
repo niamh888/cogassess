@@ -222,7 +222,7 @@ CogAssess has been developed under an IEC 62304:2006+AMD1:2015 Class B software 
 | Software Architecture Description | CA-SAD-001 | Five software items, pipeline architecture, data flows |
 | Software Development Plan | CA-SDP-001 | Lifecycle model, coding standards, release criteria |
 | Software Verification Plan & Report | CA-SVP-001 | 30 test cases; 16 automated, 14 pending browser/GCP prerequisites |
-| Risk Management File | CA-RMF-001 | ISO 14971 hazard analysis — 10 hazards, all residual risks acceptable or ALARP |
+| Risk Management File | CA-RMF-001 | ISO 14971 hazard analysis — 10 hazards, all residual risks Acceptable following application of risk controls |
 | SOUP Evaluation Records | CA-SOUP-001 | 14 third-party components evaluated including CVE review |
 | Security Architecture & Threat Model | CA-SEC-001 | STRIDE analysis, transport security, data minimisation |
 
@@ -290,11 +290,11 @@ Waiting times for neuropsychological assessment in most healthcare systems are m
 
 ## 6. Summary of Known and Potential Risks
 
-The following hazards have been identified in CA-RMF-001. All residual risks have been assessed as Acceptable or ALARP following the application of risk control measures.
+The following hazards have been identified in CA-RMF-001. All residual risks have been assessed as Acceptable following the application of risk control measures.
 
 | Hazard | Risk Control Measures | Residual Risk |
 |---|---|---|
-| **H-001:** Incorrect biomarker score leads to erroneous clinical decision | Scores labelled as indicators only; clinical disclaimer on all outputs; clinician maintains diagnostic authority | ALARP |
+| **H-001:** Incorrect biomarker score leads to erroneous clinical decision | Scores labelled as indicators only; clinical disclaimer on all outputs; clinician maintains diagnostic authority | Acceptable |
 | **H-002:** Patient data breach | Pseudonymisation; bcrypt password hashing; JWT auth; HTTPS; temp file deletion; no patient name stored | Acceptable |
 | **H-003:** Silent recording produces false high scores | <5-word transcript guard terminates pipeline; 422 error returned; clinician prompted to re-record | Acceptable |
 | **H-004:** System unavailable during assessment | Fallback to standard clinical assessment; no patient safety risk from software unavailability | Acceptable |
@@ -302,8 +302,8 @@ The following hazards have been identified in CA-RMF-001. All residual risks hav
 | **H-006:** Numerical scores displayed directly to patient | Patient summary page shows no numerical scores; bell curve uses plain-language zone labels only | Acceptable |
 | **H-007:** Non-English speaker assessed with English-only pipeline | L1 language recorded at intake; non-English L1 flagged on clinical report | Acceptable |
 | **H-008:** Findings tampered with after clinical sign-off | Immutable audit log; amendments require documented reason; full history available to clinician | Acceptable |
-| **H-009:** Scoring algorithms not validated for target population | Clinical notice displayed on all reports; study protocol requires concurrent standard assessment | ALARP |
-| **H-010:** Poor recording environment introduces confounding artefact | Environment quality recorded at intake; displayed on report as confounding variable; clinical guidance recommends quiet room | ALARP |
+| **H-009:** Scoring algorithms not validated for target population | Clinical notice displayed on all reports; study protocol requires concurrent standard assessment | Acceptable |
+| **H-010:** Poor recording environment introduces confounding artefact | Environment quality recorded at intake; displayed on report as confounding variable; clinical guidance recommends quiet room | Acceptable |
 
 ### 6.1 AI-Specific Risk Considerations
 

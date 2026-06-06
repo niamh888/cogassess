@@ -1372,6 +1372,100 @@ The GCP STT API call contains only audio data and recognition configuration. No 
 
 ---
 
+### TC-SOUP-001: Safety-Relevant SOUP Packages Have Exact Version Pins
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-SOUP-001 |
+| **Requirement(s)** | SRS-SOUP-001, SRS-AI-001 |
+| **Description** | Verify that all safety-relevant and security-relevant SOUP packages listed in CA-SOUP-001 have exact version pins (==) in requirements.txt. Floating version specifiers (>=, ~=) are a compliance gap under IEC 62304 §8.1.2. |
+| **Verification Method** | Automated — pytest (tests/test_soup.py) |
+| **Automated?** | Yes — `python run_tests.py` |
+
+**Preconditions:**
+
+1. requirements.txt is present in the project root.
+2. pytest is installed in the virtual environment.
+
+**Test Steps:**
+
+1. Run `python run_tests.py` (or `pytest tests/test_soup.py::test_soup_packages_have_exact_version_pins`).
+2. The test parses requirements.txt and checks that each of the 11 safety/security-relevant SOUP packages uses `==` pinning.
+
+**Expected Result:**
+
+All 11 safety/security-relevant SOUP packages are present in requirements.txt with exact `==` version pins. If any package uses `>=`, `~=`, or another non-exact specifier, the test fails and an anomaly log entry is created.
+
+**Pass Criteria:**
+
+- Test reports PASS with no version-pinning violations.
+- requirements.txt contains `==`-pinned entries for: fastapi, sqlalchemy, passlib, bcrypt, python-jose, google-cloud-speech, librosa, soundfile, spacy, sentence-transformers, transformers.
+
+---
+
+### TC-SOUP-002: Safety-Relevant SOUP Packages Are Installed
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-SOUP-002 |
+| **Requirement(s)** | SRS-SOUP-002, SRS-AI-001 |
+| **Description** | Verify that all 11 safety-relevant and security-relevant SOUP packages are installed and detectable in the current Python environment. Uses importlib.metadata (queries the package registry directly — not affected by mock injection in conftest.py). |
+| **Verification Method** | Automated — pytest (tests/test_soup.py) |
+| **Automated?** | Yes — `python run_tests.py` |
+
+**Preconditions:**
+
+1. Virtual environment is activated.
+2. `pip install -r requirements.txt` has been run.
+
+**Test Steps:**
+
+1. Run `python run_tests.py` (or `pytest tests/test_soup.py::test_soup_packages_are_installed`).
+2. The test uses `importlib.metadata.version()` to check the installed version of each SOUP package.
+
+**Expected Result:**
+
+All 11 packages return a non-empty version string from the package registry.
+
+**Pass Criteria:**
+
+- Test reports PASS.
+- All 11 packages are installed and return a version string.
+
+---
+
+### TC-SOUP-003: No HIGH or CRITICAL CVEs in Installed SOUP Packages
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-SOUP-003 |
+| **Requirement(s)** | SRS-SOUP-003 |
+| **Description** | Run pip-audit against all installed packages and verify that no HIGH or CRITICAL severity CVEs are present. Per CA-SOUP-001 Section 4, CVE review must be conducted at least annually and on any triggered event (new CVE disclosed). |
+| **Verification Method** | Automated — pytest + pip-audit (tests/test_soup.py) |
+| **Automated?** | Yes — once pip-audit is installed (`pip install pip-audit`) |
+
+**Preconditions:**
+
+1. `pip install pip-audit` has been run in the virtual environment.
+2. The `@pytest.mark.skip` decorator has been removed from `test_no_critical_cves_in_soup_packages` in tests/test_soup.py.
+
+**Test Steps:**
+
+1. Install pip-audit: `pip install pip-audit`
+2. Remove the skip decorator from TC-SOUP-003 in tests/test_soup.py.
+3. Run `python run_tests.py`.
+
+**Expected Result:**
+
+pip-audit reports zero CVE findings, or any findings are of LOW / MEDIUM severity only.
+
+**Pass Criteria:**
+
+- Test reports PASS with no HIGH or CRITICAL CVE findings.
+- If any HIGH or CRITICAL CVE is found: the test fails, an anomaly log entry is created, and the affected package must be updated or a documented risk-acceptance decision made before release.
+
+---
+
 ## 16. Test Results Summary Table
 
 The following table is to be completed at the time of test execution. Each row corresponds to one test case. The "Result" column is populated as: **PASS**, **FAIL**, or **BLOCKED**.
@@ -1408,12 +1502,15 @@ The following table is to be completed at the time of test execution. Each row c
 | TC-SEC-002 | SRS-SEC-002 | JWT header algorithm is HS256 | | | | | | |
 | TC-SEC-003 | SRS-SEC-005 | Temp audio file deleted after pipeline | | | | | | |
 | TC-SEC-004 | SRS-SEC-006 | No PII in GCP STT request | | | | | | |
+| TC-SOUP-001 | SRS-SOUP-001, SRS-AI-001 | Safety-relevant SOUP packages have exact == pins | | | | | | |
+| TC-SOUP-002 | SRS-SOUP-002, SRS-AI-001 | Safety-relevant SOUP packages are installed | | | | | | |
+| TC-SOUP-003 | SRS-SOUP-003 | No HIGH/CRITICAL CVEs (pip-audit) | | | | | | |
 
 **Summary Statistics (to be completed after execution):**
 
 | Metric | Value |
 |--------|-------|
-| Total test cases | 30 |
+| Total test cases | 33 |
 | Executed | |
 | Passed | |
 | Failed | |
