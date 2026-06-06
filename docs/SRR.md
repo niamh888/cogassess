@@ -89,6 +89,9 @@ The following IEC 62304 companion documents are included in this release:
 | CA-SOUP-001 | Software of Unknown Provenance Evaluation |
 | CA-SRR-001 | Software Release Record (this document) |
 | CA-SEC-001 | Security Architecture and Threat Model |
+| CA-RTM-001 | Requirements Traceability Matrix |
+| CA-VP-001 | Software Validation Plan (IEC 82304-1 §6) |
+| CA-VR-001 | Software Validation Report (IEC 82304-1 §6) |
 
 ---
 
@@ -136,7 +139,7 @@ The Google Cloud STT Chirp model and the HuggingFace emotion classifier (`j-hart
 
 ## 6. SDLC Verification Checklist
 
-The following table records the verification status of each required IEC 62304 Class B lifecycle activity as of this release. Items marked "Not yet" are recorded as known gaps and are planned for remediation before v1.0.
+The following table records the verification and validation status of each required IEC 62304 Class B / IEC 82304-1 lifecycle activity as of this release. Items marked "Not yet" are recorded as known gaps and are planned for remediation before v1.0 / first-patient-in.
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -147,13 +150,19 @@ The following table records the verification status of each required IEC 62304 C
 | Risk management file completed | Complete | CA-RMF-001 |
 | SOUP evaluation completed | Complete | CA-SOUP-001 |
 | Security architecture documented | Complete | CA-SEC-001 |
-| Automated unit tests | Not yet | Planned for v1.0 |
-| Automated integration tests | Not yet | Planned for v1.0 |
-| System tests per SVP | Manual only | To be executed before v1.0 per CA-SVP-001 |
-| Penetration testing | Not yet | Planned before production deployment |
-| Clinical validation study | Not yet | Planned for v1.0 |
+| Requirements traceability matrix | Complete | CA-RTM-001 |
+| Validation plan defined (IEC 82304-1 §6) | Complete | CA-VP-001 |
+| Validation report template (IEC 82304-1 §6) | Partially complete | CA-VR-001 — sections to be completed at FPI |
+| Automated test suite (43 SVP test cases) | 42 passing / 14 skipped | Test log TR-20260606-113847 |
+| API-layer penetration test (OWASP Top 10) | **Complete — all 10 PASS** | CA-SEC-001 §10.2, CA-VR-001 §3.1 |
+| Bandit static analysis | **Complete — 0 actionable findings** | CA-SEC-001 §10.1, CA-VR-001 §3.3 |
+| System-level browser/GCP tests | Not yet | To be executed before FPI per CA-VP-001 VA-001 |
+| OWASP ZAP dynamic scan | Not yet | To be executed on production server before FPI |
+| Usability evaluation (IEC 62366-1) | Not yet | To be completed before FPI per CA-VP-001 VA-003 |
+| Clinical validation study (concurrent validity) | Not yet | Planned per CA-IB-001 |
 | Traceability: SRS requirements → architecture | Complete | CA-SAD-001 §6 |
 | Traceability: requirements → risk controls | Complete | CA-RMF-001 §5 |
+| Traceability: requirements → test cases | Complete | CA-RTM-001 |
 | Traceability: requirements → verification cases | Partial | CA-SVP-001 (manual cases defined, not yet executed) |
 
 ---

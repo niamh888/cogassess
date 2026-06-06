@@ -348,18 +348,21 @@ cogassess/
 
 ## Regulatory documentation
 
-A full IEC 62304 Class B software lifecycle document suite is in `docs/`. All documents are available as both Markdown (`.md`) and Word (`.docx`).
+A full IEC 62304 Class B / IEC 82304-1 software lifecycle document suite is in `docs/`. All documents are available as both Markdown (`.md`) and Word (`.docx`).
 
 | Document | ID | Description |
 |----------|----|-------------|
-| Software Requirements Specification | CA-SRS-001 | ~80 functional, safety, security, and performance requirements |
+| Software Requirements Specification | CA-SRS-001 | ~110 functional, safety, security, and performance requirements |
 | Software Architecture Description | CA-SAD-001 | 5 software items, pipeline architecture, security architecture |
 | Software Development Plan | CA-SDP-001 | Lifecycle model, roles, tools, coding standards, release criteria |
-| Software Verification Plan | CA-SVP-001 | 33 test cases across 10 requirement groups |
+| Software Verification Plan | CA-SVP-001 | 43 test cases across 11 requirement groups |
 | Risk Management File | CA-RMF-001 | ISO 14971 hazard analysis — 10 hazards, all residual risks acceptable |
 | SOUP Evaluation Records | CA-SOUP-001 | 14 third-party components evaluated including CVE review |
 | Software Release Record | CA-SRR-001 | v0.5.0-beta release baseline, known limitations, SDLC checklist |
-| Security Architecture & Threat Model | CA-SEC-001 | STRIDE analysis, production pre-conditions |
+| Security Architecture & Threat Model | CA-SEC-001 | STRIDE analysis, pen test record, production pre-conditions |
+| Requirements Traceability Matrix | CA-RTM-001 | Full mapping of all ~110 requirements to test cases and verification status |
+| Software Validation Plan | CA-VP-001 | IEC 82304-1 §6 — 5 validation activities, acceptance criteria, release gates |
+| Software Validation Report | CA-VR-001 | IEC 82304-1 §6 — automated results pre-filled; pending sections for FPI |
 
 ---
 

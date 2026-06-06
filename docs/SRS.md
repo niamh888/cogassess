@@ -89,12 +89,16 @@ The software is not intended for use as a standalone diagnostic tool. Outputs mu
 
 | Reference | Title |
 |-----------|-------|
+| IEC 82304-1:2016 | Health software — Part 1: General requirements for product safety |
 | IEC 62304:2006+AMD1:2015 | Medical device software — Software life cycle processes |
 | ISO 14971:2019 | Medical devices — Application of risk management to medical devices |
-| IEC 62366-1:2015 | Medical devices — Usability engineering |
+| IEC 62366-1:2015+AMD1:2020 | Medical devices — Usability engineering |
 | GDPR (EU) 2016/679 | General Data Protection Regulation |
 | Health Research Regulations 2018 (Ireland) | Statutory Instrument No. 314 of 2018 |
-| CA-SAD-001 | CogAssess Software Architecture Document (companion document) |
+| EU MDR 2017/745 | Regulation (EU) 2017/745 on medical devices |
+| CA-SAD-001 | CogAssess Software Architecture Document |
+| CA-RTM-001 | CogAssess Requirements Traceability Matrix |
+| CA-VP-001 | CogAssess Software Validation Plan |
 
 ### 1.6 Document Overview
 

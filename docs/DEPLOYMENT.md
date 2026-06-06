@@ -6,7 +6,7 @@
 | Version | 1.0 |
 | Date | 2026-06-06 |
 | Audience | System administrator or IT contact responsible for clinical trial deployment |
-| Companion documents | CA-SRS-001, CA-SAD-001, CA-RMF-001, CA-SEC-001, CA-SVP-001 |
+| Companion documents | CA-SRS-001, CA-SAD-001, CA-RMF-001, CA-SEC-001, CA-SVP-001, CA-VP-001, CA-VR-001, CA-RTM-001 |
 
 ---
 
@@ -23,6 +23,8 @@
 5. [Path B — Linux Server (VPS or bare-metal)](#5-path-b--linux-server-vps-or-bare-metal)
 6. [Shared steps (both paths)](#6-shared-steps-both-paths)
 7. [Pre-go-live verification](#7-pre-go-live-verification)
+   - [7.6 OWASP ZAP dynamic scan](#76-owasp-zap-dynamic-security-scan)
+   - [7.7 Validation gate — before first-patient-in](#77-validation-gate--before-first-patient-in)
 8. [Ongoing operations](#8-ongoing-operations)
    - [8.3 Daily CVE Scanning — Required](#83-daily-cve-scanning--required)
    - [8.3.3 Response Protocol](#833-response-protocol--what-to-do-when-an-alert-fires)
@@ -460,7 +462,7 @@ source venv/bin/activate
 python run_tests.py
 ```
 
-**Required outcome:** `Passed: 18, Failed: 0`
+**Required outcome:** `Passed: 42, Failed: 0`
 
 Save the generated `logs/test_log_YYYYMMDD-HHMMSS.md` file. This is the software verification evidence required under IEC 62304 and EU MDR. Label it as the **production go-live test run** and store it with the trial master file.
 
@@ -511,6 +513,63 @@ curl -X POST \
 ```
 
 If this returns a 200 or 400 (not a network error or 403), GCP connectivity is confirmed.
+
+### 7.6 OWASP ZAP Dynamic Security Scan
+
+**[REGULATORY — VA-002B per CA-VP-001]**
+
+The OWASP ZAP active scan must be run against the live HTTPS server before the first clinical session. This cannot be done before deployment because it requires a real HTTPS endpoint. The scan and its findings must be documented in the CA-VR-001 Validation Report §3.2.
+
+Install Docker on a machine with network access to the server (can be your own laptop if the server is reachable):
+
+```bash
+docker pull ghcr.io/zaproxy/zaproxy:stable
+```
+
+Run the API scan against the deployed server:
+
+```bash
+docker run --rm \
+  -v $(pwd):/zap/wrk:rw \
+  ghcr.io/zaproxy/zaproxy:stable \
+  zap-api-scan.py \
+  -t https://cogassess.yourdomain.com/openapi.json \
+  -f openapi \
+  -r zap_report.html \
+  -J zap_report.json
+```
+
+The scan generates `zap_report.html` in the current directory. Open it and review:
+
+| Severity | Required action before go-live |
+|----------|-------------------------------|
+| Critical | Remediate and re-scan — **do not proceed to clinical use** |
+| High | Remediate and re-scan — **do not proceed to clinical use** |
+| Medium | Review against CA-RMF-001; document risk acceptance if not remediated |
+| Low / Informational | Review and note in CA-VR-001; no block on go-live |
+
+File `zap_report.html` in the Trial Master File alongside the test log. Record findings and their disposition in CA-VR-001 §3.2. If no Critical or High findings are present (or all are remediated), mark VA-002B as complete in CA-VR-001.
+
+> **Note for AWS Path A:** ZAP can be run from your local machine against the ALB endpoint, or from a separate EC2 instance in the same VPC if the security group restricts access. Ensure ZAP traffic is not blocked by the ALB Web ACL if AWS WAF is enabled.
+
+### 7.7 Validation Gate — Before First-Patient-In
+
+**[REGULATORY — CA-VP-001 §6 release gates G-01 to G-08]**
+
+Before the first real patient session begins, the following IEC 82304-1 validation activities must all be complete. The person responsible for each activity is noted. The IT deployer (you) is responsible for G-01, G-02, G-03, and G-08. The development lead and clinical team are responsible for the rest.
+
+| Gate | Activity | Responsible | Evidence |
+|------|----------|-------------|---------|
+| G-01 | Automated test suite: Failed = 0 (Section 7.1) | IT deployer | `logs/test_log_*.md` |
+| G-02 | System-level browser/GCP test session on this server | Development lead | CA-STR-001 |
+| G-03 | OWASP ZAP scan: no Critical/High open (Section 7.6) | IT deployer / Dev lead | CA-VR-001 §3.2 |
+| G-04 | Usability evaluation with ≥ 5 clinicians — SUS ≥ 70 | Development lead | CA-UER-001 |
+| G-05 | All residual risks in CA-RMF-001 rated Acceptable | Development lead | CA-RMF-001 §8 |
+| G-06 | Ethics committee approval obtained | Principal Investigator | Approval letter on file |
+| G-07 | Sponsor sign-off on CA-SRR-001 §8 | Development lead | CA-SRR-001 |
+| G-08 | This deployment checklist complete and signed (Section 9) | IT deployer | Signed Section 9 table |
+
+Do not admit the first patient until you have received written confirmation from the development lead that G-02, G-04, G-05, G-06, and G-07 are all satisfied.
 
 ---
 
@@ -739,18 +798,31 @@ This is a regulatory requirement under IEC 62304 §8.1.2.
 
 | Item | Completed by | Date | Signature |
 |------|-------------|------|-----------|
+| **Deployment** | | | |
 | Deployment checklist completed | | | |
-| Pre-go-live test suite run — PASS (18/18) | | | |
+| Pre-go-live test suite run — PASS (42/42) | | | |
 | Test log saved to trial master file | | | |
-| End-to-end pipeline check passed | | | |
-| Security checks passed | | | |
+| End-to-end pipeline check passed (Section 7.3) | | | |
+| Security checks passed (Section 7.4) | | | |
+| GCP pipeline connectivity confirmed (Section 7.5) | | | |
 | Default password changed | | | |
 | CORS restricted to production domain | | | |
 | GCP service account credentials secured | | | |
-| Database backup verified | | | |
+| Database backup verified and restore tested | | | |
 | Daily CVE scan scheduled (cron job confirmed running) | | | |
 | Alert recipient confirmed (SNS / email subscription verified) | | | |
 | CVE response protocol communicated to site IT contact | | | |
+| **Validation (IEC 82304-1 — CA-VP-001)** | | | |
+| OWASP ZAP scan complete — no Critical/High open (Section 7.6) | | | |
+| ZAP report filed in Trial Master File | | | |
+| System-level browser/GCP test session complete — CA-STR-001 signed | | | |
+| Usability evaluation complete — SUS ≥ 70 — CA-UER-001 signed | | | |
+| CA-VR-001 §2–4 sections completed by development lead | | | |
+| All 8 release gates (G-01 to G-08) confirmed satisfied | | | |
+| Written confirmation from development lead received | | | |
+| **Regulatory** | | | |
+| Ethics committee approval on file | | | |
+| CA-SRR-001 §8 signed by Sponsor | | | |
 | Site IT contact briefed on incident reporting | | | |
 
 The completed sign-off table should be printed, signed, and filed in the **Trial Master File** alongside the test log from Section 7.1.
