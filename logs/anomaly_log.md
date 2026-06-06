@@ -30,3 +30,16 @@ _Reference: CA-SVP-001_
 | Status | Open |
 
 ---
+
+## ANO-003 · TC-SOUP-003 · 2026-06-06 11:13:33
+
+| Field | Value |
+|---|---|
+| Run ID | TR-20260606-111333 |
+| Tester | Niamh |
+| Test function | test_no_critical_cves_in_soup_packages |
+| SVP reference | TC-SOUP-003 |
+| Error | E                    [-o FILE] [--ig |
+| Status | Open |
+
+---

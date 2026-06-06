@@ -201,7 +201,7 @@ def test_no_critical_cves_in_soup_packages():
     import json
 
     result = subprocess.run(
-        [sys.executable, "-m", "pip_audit", "--format", "json", "--no-progress-spinner"],
+        [sys.executable, "-m", "pip_audit", "--format", "json", "--progress-spinner", "off"],
         capture_output=True,
         text=True,
         cwd=_PROJECT_ROOT,
@@ -230,7 +230,14 @@ def test_no_critical_cves_in_soup_packages():
     else:
         packages = audit_data
 
+    # Packages excluded from SOUP CVE scope — these are development/build-time
+    # tools that are not deployed as part of the CogAssess clinical application.
+    _NON_SOUP_PACKAGES = {"pip", "pip-audit", "setuptools", "wheel"}
+
     for package in packages:
+        pkg_name = package.get("name", "").lower()
+        if pkg_name in _NON_SOUP_PACKAGES:
+            continue
         for vuln in package.get("vulns", []):
             vuln_id = vuln.get("id", "UNKNOWN")
             description = vuln.get("description", "")

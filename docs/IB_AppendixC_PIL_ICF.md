@@ -102,7 +102,7 @@ Your privacy is very important to us. Here is how we protect your information:
 
 The legal basis for processing your data in this study is **Article 9(2)(j) GDPR** (processing for scientific research purposes in the public interest), subject to appropriate safeguards.
 
-For questions about your data, contact the Data Controller at your site or the Sponsor's Data Protection Officer at: **dpo@memorytell.com**
+For questions about your data, contact the Data Controller at your site or the Sponsor's Data Protection Officer at: **info@memorytell.com**
 
 **How long will my data be kept?** Anonymised research data will be retained for 15 years in line with Good Clinical Practice requirements. No identifiable data will be retained after the study ends.
 
@@ -144,7 +144,7 @@ If you have any questions about this study, please contact:
 | Telephone | [To be completed by site] |
 | Email | [To be completed by site] |
 | Study Sponsor | MemoryTell Ltd |
-| Sponsor contact | clinical@memorytell.com |
+| Sponsor contact | info@memorytell.com |
 
 ---
 

@@ -24,6 +24,8 @@
 6. [Shared steps (both paths)](#6-shared-steps-both-paths)
 7. [Pre-go-live verification](#7-pre-go-live-verification)
 8. [Ongoing operations](#8-ongoing-operations)
+   - [8.3 Daily CVE Scanning — Required](#83-daily-cve-scanning--required)
+   - [8.3.3 Response Protocol](#833-response-protocol--what-to-do-when-an-alert-fires)
 9. [Regulatory sign-off](#9-regulatory-sign-off)
 
 ---
@@ -534,17 +536,190 @@ sudo journalctl -u cogassess -f
 # Look for: pipeline errors, GCP auth failures, database connection errors
 ```
 
-### 8.3 SOUP CVE Review
+### 8.3 Daily CVE Scanning — Required
 
-Per CA-SOUP-001, review installed packages for new CVEs at least every 6 months during the trial, and immediately if a relevant CVE is published. To run the automated CVE check:
+**[REGULATORY]** CVE scanning must run **every day** for the duration of the clinical trial. New vulnerabilities are disclosed continuously; an annual or monthly review cycle is not acceptable for a live clinical system. A vulnerability published today is exploitable today.
+
+The CogAssess test suite (TC-SOUP-003) includes an automated CVE scan via pip-audit. This must be scheduled to run automatically, and someone must receive an alert if it fails.
+
+---
+
+#### 8.3.1 Path A — AWS: Automated Daily Scan with SNS Alert
+
+**Step 1 — Create an SNS topic for alerts:**
 
 ```bash
-pip install pip-audit
-# Then remove the @pytest.mark.skip from TC-SOUP-003 in tests/test_soup.py
-python run_tests.py
+aws sns create-topic --name cogassess-security-alerts
+aws sns subscribe \
+  --topic-arn arn:aws:sns:eu-west-1:YOUR_ACCOUNT:cogassess-security-alerts \
+  --protocol email \
+  --notification-endpoint responsible.person@yourinstitution.ie
 ```
 
-Any HIGH or CRITICAL finding must be investigated and resolved before the next clinical session.
+Confirm the subscription by clicking the link in the email AWS sends.
+
+**Step 2 — Create the scan script on EC2:**
+
+```bash
+nano /home/ubuntu/cogassess/scripts/daily_scan.sh
+```
+
+```bash
+#!/bin/bash
+set -e
+
+cd /home/ubuntu/cogassess
+source venv/bin/activate
+
+# Run full test suite including TC-SOUP-003 CVE scan
+python run_tests.py
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  # Find today's test log
+  LATEST_LOG=$(ls -t logs/test_log_*.md | head -1)
+  FAILED=$(grep '❌ FAIL' "$LATEST_LOG" | head -20)
+
+  aws sns publish \
+    --topic-arn arn:aws:sns:eu-west-1:YOUR_ACCOUNT:cogassess-security-alerts \
+    --subject "ALERT: CogAssess test failure — review before next clinical session" \
+    --message "CogAssess automated test run FAILED at $(date).
+
+Failed tests:
+$FAILED
+
+Review the anomaly log immediately:
+$LATEST_LOG
+
+Clinical sessions must not proceed until the failure is investigated and resolved.
+Contact: info@memorytell.com"
+fi
+
+exit $EXIT_CODE
+```
+
+```bash
+chmod +x /home/ubuntu/cogassess/scripts/daily_scan.sh
+```
+
+**Step 3 — Schedule with cron:**
+
+```bash
+crontab -e
+```
+
+Add:
+```
+0 2 * * * /home/ubuntu/cogassess/scripts/daily_scan.sh >> /home/ubuntu/cogassess/logs/cron_scan.log 2>&1
+```
+
+This runs every night at 02:00. The test log and anomaly log are written by `run_tests.py` as usual.
+
+**Step 4 — Verify the schedule works:**
+
+```bash
+# Run once manually to confirm no errors
+/home/ubuntu/cogassess/scripts/daily_scan.sh
+```
+
+---
+
+#### 8.3.2 Path B — Linux Server: Automated Daily Scan with Email Alert
+
+**Step 1 — Install mail utilities:**
+
+```bash
+sudo apt install -y mailutils
+```
+
+Configure your server's mail relay (ask your IT team for the SMTP settings if using an institutional server).
+
+**Step 2 — Create the scan script:**
+
+```bash
+nano /home/ubuntu/cogassess/scripts/daily_scan.sh
+```
+
+```bash
+#!/bin/bash
+set -e
+
+cd /home/ubuntu/cogassess
+source venv/bin/activate
+
+python run_tests.py
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  LATEST_LOG=$(ls -t logs/test_log_*.md | head -1)
+  FAILED=$(grep '❌ FAIL' "$LATEST_LOG" | head -20)
+
+  echo "CogAssess automated test run FAILED at $(date).
+
+Failed tests:
+$FAILED
+
+Review the anomaly log immediately. Clinical sessions must not proceed until the failure is investigated and resolved.
+
+Contact: info@memorytell.com" \
+  | mail -s "ALERT: CogAssess test failure — action required" \
+    responsible.person@yourinstitution.ie
+fi
+
+exit $EXIT_CODE
+```
+
+```bash
+chmod +x /home/ubuntu/cogassess/scripts/daily_scan.sh
+```
+
+**Step 3 — Schedule with cron:**
+
+```bash
+crontab -e
+```
+
+Add:
+```
+0 2 * * * /home/ubuntu/cogassess/scripts/daily_scan.sh >> /home/ubuntu/cogassess/logs/cron_scan.log 2>&1
+```
+
+---
+
+#### 8.3.3 Response Protocol — What to Do When an Alert Fires
+
+When TC-SOUP-003 fails, the following response is required:
+
+| Step | Action | Timeframe |
+|------|--------|-----------|
+| 1 | Acknowledge the alert and open the anomaly log | Within 2 hours |
+| 2 | Identify the affected package and CVE ID | Within 2 hours |
+| 3 | Assess whether the CVE affects CogAssess in its intended use (consult CA-SOUP-001 for the package's safety classification and use context) | Within 4 hours |
+| 4a | If the CVE **is exploitable** in CogAssess: suspend clinical sessions, update the package, re-run tests, close the anomaly | Before next clinical session |
+| 4b | If the CVE **is not exploitable** in CogAssess (e.g. affects an API CogAssess does not use): document the assessment in the anomaly log with justification, mark as accepted risk, notify sponsor | Within 24 hours |
+| 5 | Notify sponsor (MemoryTell Ltd) of any CVE finding regardless of outcome | Within 24 hours |
+
+**Sponsor contact for security incidents:** info@memorytell.com
+
+> **Rule:** If in doubt about exploitability, treat the CVE as exploitable and suspend sessions until assessed. Patient safety takes precedence.
+
+---
+
+#### 8.3.4 Verifying the Daily Scan Is Running
+
+Check that the cron job is producing daily logs:
+
+```bash
+ls -lt logs/test_log_*.md | head -7
+```
+
+You should see one log file per day. If there are gaps, the cron job has stopped — investigate immediately.
+
+Also check the cron log for errors:
+
+```bash
+tail -50 logs/cron_scan.log
+```
 
 ### 8.4 Software Updates
 
@@ -573,6 +748,9 @@ This is a regulatory requirement under IEC 62304 §8.1.2.
 | CORS restricted to production domain | | | |
 | GCP service account credentials secured | | | |
 | Database backup verified | | | |
+| Daily CVE scan scheduled (cron job confirmed running) | | | |
+| Alert recipient confirmed (SNS / email subscription verified) | | | |
+| CVE response protocol communicated to site IT contact | | | |
 | Site IT contact briefed on incident reporting | | | |
 
 The completed sign-off table should be printed, signed, and filed in the **Trial Master File** alongside the test log from Section 7.1.
@@ -582,7 +760,7 @@ The completed sign-off table should be printed, signed, and filed in the **Trial
 | | |
 |--|--|
 | Sponsor | MemoryTell Ltd |
-| Contact | clinical@memorytell.com |
+| Contact | info@memorytell.com |
 | Serious incident reporting deadline | 24 hours |
 | Non-serious incident reporting deadline | 7 days |
 
