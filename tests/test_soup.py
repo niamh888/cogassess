@@ -184,12 +184,6 @@ def test_soup_packages_are_installed():
 # TC-SOUP-003
 # ─────────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.skip(
-    reason="Requires pip-audit to be installed — run 'pip install pip-audit' "
-           "and remove this skip. pip-audit performs CVE scanning against all "
-           "installed packages and reports HIGH and CRITICAL findings. "
-           "This test is part of the annual SOUP CVE review required by CA-SOUP-001 §6.1."
-)
 def test_no_critical_cves_in_soup_packages():
     """
     TC-SOUP-003: pip audit reports no HIGH or CRITICAL CVEs in installed packages.
@@ -207,16 +201,18 @@ def test_no_critical_cves_in_soup_packages():
     import json
 
     result = subprocess.run(
-        [sys.executable, "-m", "pip_audit", "--json", "--progress-spinner=off"],
+        [sys.executable, "-m", "pip_audit", "--format", "json", "--no-progress-spinner"],
         capture_output=True,
         text=True,
         cwd=_PROJECT_ROOT,
     )
 
     # pip-audit exits non-zero when vulnerabilities are found;
-    # we parse the JSON ourselves to distinguish critical from minor findings
+    # we parse the JSON ourselves to distinguish findings from a clean run.
+    # Try stdout first; fall back to stderr (some versions write JSON there).
+    raw = result.stdout.strip() or result.stderr.strip()
     try:
-        audit_data = json.loads(result.stdout)
+        audit_data = json.loads(raw)
     except json.JSONDecodeError:
         pytest.fail(
             f"TC-SOUP-003: pip-audit output could not be parsed as JSON.\n"
@@ -224,17 +220,22 @@ def test_no_critical_cves_in_soup_packages():
             f"stderr: {result.stderr[:500]}"
         )
 
+    # pip-audit --format json outputs either:
+    #   a list of vulnerability objects (flat), or
+    #   {"dependencies": [...]} with nested vulns.
+    # Normalise to a flat list of finding strings.
     critical_findings = []
-    # pip-audit JSON format: list of {"name": ..., "version": ..., "vulns": [...]}
-    for package in audit_data:
+    if isinstance(audit_data, dict):
+        packages = audit_data.get("dependencies", [])
+    else:
+        packages = audit_data
+
+    for package in packages:
         for vuln in package.get("vulns", []):
-            severity = (vuln.get("fix_versions") and "HIGH") or "UNKNOWN"
-            # pip-audit doesn't always include severity; check aliases for CVE IDs
-            aliases = vuln.get("aliases", [])
-            description = vuln.get("description", "")
             vuln_id = vuln.get("id", "UNKNOWN")
+            description = vuln.get("description", "")
             critical_findings.append(
-                f"  [{vuln_id}] {package['name']} {package['version']} — "
+                f"  [{vuln_id}] {package.get('name', '?')} {package.get('version', '?')} — "
                 f"{description[:120]}"
             )
 

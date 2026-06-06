@@ -202,7 +202,7 @@ Expected response:
 
 ## Automated testing
 
-The test suite covers 16 test cases mapped to [CA-SVP-001](docs/SVP.md). No GCP account, no ML models, and no running server are required — all heavy dependencies are stubbed at runtime.
+The test suite covers 33 test cases mapped to [CA-SVP-001](docs/SVP.md). No GCP account, no ML models, and no running server are required — all heavy dependencies are stubbed at runtime.
 
 ### First-time setup (test dependencies only)
 
@@ -241,16 +241,42 @@ python -m pytest tests/ -v
 
 ### Test coverage
 
-| Test file | SVP test cases |
-|-----------|---------------|
-| test_auth.py | TC-AUTH-001, TC-AUTH-002, TC-AUTH-003 |
-| test_assessments.py | TC-ASS-001, TC-ASS-002, TC-ASS-003 |
-| test_findings.py | TC-FIND-001, TC-FIND-002, TC-SAF-001 |
-| test_patients.py | TC-PAT-001, TC-PAT-003 |
-| test_pipeline.py | TC-PIP-002, TC-PIP-004 |
-| test_security.py | TC-SEC-001, TC-SEC-002, TC-REP-001 |
+| Test file | SVP test cases | Status |
+|-----------|---------------|--------|
+| test_auth.py | TC-AUTH-001, TC-AUTH-002, TC-AUTH-003 | Automated |
+| test_assessments.py | TC-ASS-001, TC-ASS-002, TC-ASS-003 | Automated |
+| test_findings.py | TC-FIND-001, TC-FIND-002, TC-SAF-001 | Automated |
+| test_patients.py | TC-PAT-001, TC-PAT-003 | Automated |
+| test_pipeline.py | TC-PIP-002, TC-PIP-004 | Automated |
+| test_security.py | TC-SEC-001, TC-SEC-002, TC-REP-001 | Automated |
+| test_soup.py | TC-SOUP-001, TC-SOUP-002, TC-SOUP-003 | TC-SOUP-001/002 automated; TC-SOUP-003 requires `pip install pip-audit` |
 
 Tests that require a live browser (TC-REC-001, TC-REC-002) and tests that require a GCP connection (TC-PIP-001, TC-PIP-003) are defined in CA-SVP-001 as manual verification steps.
+
+---
+
+## Production deployment
+
+> Full instructions are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Read that document before proceeding.
+
+**Pre-deployment checklist (summary):**
+
+- [ ] Server has ≥ 8 GB RAM — required for CPU ML inference
+- [ ] PostgreSQL provisioned (RDS on AWS, or local install) — SQLite is not suitable for production
+- [ ] HTTPS enabled — clinical data must not travel over plain HTTP
+- [ ] `allow_origins=["*"]` in `main.py` changed to your production domain
+- [ ] JWT secret key generated (`python -c "import secrets; print(secrets.token_hex(32))"`) and stored securely (AWS Secrets Manager or `chmod 600` `.env` file)
+- [ ] GCP service account key created and stored securely — not committed to git
+- [ ] spaCy model downloaded on the server (`python -m spacy download en_core_web_sm`)
+- [ ] HuggingFace models pre-cached on the server (see [docs/DEPLOYMENT.md §6.5](docs/DEPLOYMENT.md))
+- [ ] Default `admin` / `changeme` password changed before first clinical session
+- [ ] Full test suite run on the production server: `python run_tests.py` → must show `Failed: 0`
+- [ ] Test log saved to the trial master file **[REGULATORY]**
+- [ ] Deployment sign-off table in [docs/DEPLOYMENT.md §9](docs/DEPLOYMENT.md) completed and filed **[REGULATORY]**
+
+**AWS users:** See [docs/DEPLOYMENT.md §4](docs/DEPLOYMENT.md) for EC2 + RDS setup, ALB/HTTPS via ACM, and Secrets Manager credential storage.
+
+**Linux/VPS users:** See [docs/DEPLOYMENT.md §5](docs/DEPLOYMENT.md) for PostgreSQL, nginx, Let's Encrypt, and systemd service setup.
 
 ---
 
@@ -328,7 +354,7 @@ A full IEC 62304 Class B software lifecycle document suite is in `docs/`. All do
 | Software Requirements Specification | CA-SRS-001 | ~80 functional, safety, security, and performance requirements |
 | Software Architecture Description | CA-SAD-001 | 5 software items, pipeline architecture, security architecture |
 | Software Development Plan | CA-SDP-001 | Lifecycle model, roles, tools, coding standards, release criteria |
-| Software Verification Plan | CA-SVP-001 | 30 test cases across 10 requirement groups |
+| Software Verification Plan | CA-SVP-001 | 33 test cases across 10 requirement groups |
 | Risk Management File | CA-RMF-001 | ISO 14971 hazard analysis — 10 hazards, all residual risks acceptable |
 | SOUP Evaluation Records | CA-SOUP-001 | 14 third-party components evaluated including CVE review |
 | Software Release Record | CA-SRR-001 | v0.5.0-beta release baseline, known limitations, SDLC checklist |
@@ -355,7 +381,7 @@ A full IEC 62304 Class B software lifecycle document suite is in `docs/`. All do
 - Scoring algorithms are **not yet clinically validated** on a representative patient population
 - SQLite is suitable for **single-site pilot use** only — migrate to PostgreSQL for multi-clinician production deployment
 - Emotion classifier and STT are **optimised for English** — non-English L1 speakers are flagged on the report but not fully accommodated
-- Automated test suite covers 16 of 30 SVP test cases — browser and GCP-dependent cases remain manual
+- Automated test suite covers 18 of 33 SVP test cases — browser and GCP-dependent cases remain manual
 - Penetration testing not yet completed — required before production deployment
 
 ---
