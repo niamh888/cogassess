@@ -40,7 +40,7 @@ def get_current_clinician(
 ) -> models.Clinician:
     exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or expired session. Please log in again.",
+        detail="Your session has expired or is invalid. Please log out and log in again.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
