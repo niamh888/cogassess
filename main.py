@@ -739,6 +739,7 @@ def list_assessments(
 ):
     rows = (
         db.query(models.Assessment)
+        .filter(models.Assessment.clinician_id == clinician.id)
         .order_by(models.Assessment.created_at.desc())
         .limit(100)
         .all()
@@ -764,10 +765,11 @@ def list_assessments(
 def get_assessment(
     assessment_key: str,
     db: Session = Depends(get_db),
-    _: models.Clinician = Depends(get_current_clinician),
+    clinician: models.Clinician = Depends(get_current_clinician),
 ):
     a = db.query(models.Assessment).filter(
-        models.Assessment.assessment_key == assessment_key
+        models.Assessment.assessment_key == assessment_key,
+        models.Assessment.clinician_id == clinician.id,
     ).first()
     if not a:
         raise HTTPException(404, "Assessment not found")
@@ -971,10 +973,11 @@ def save_findings(
 def get_findings_history(
     assessment_key: str,
     db: Session = Depends(get_db),
-    _: models.Clinician = Depends(get_current_clinician),
+    clinician: models.Clinician = Depends(get_current_clinician),
 ):
     a = db.query(models.Assessment).filter(
-        models.Assessment.assessment_key == assessment_key
+        models.Assessment.assessment_key == assessment_key,
+        models.Assessment.clinician_id == clinician.id,
     ).first()
     if not a:
         raise HTTPException(404, "Assessment not found")

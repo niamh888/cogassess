@@ -36,7 +36,8 @@
 13. Test Cases — SUM Group  
 14. Test Cases — SAF Group  
 15. Test Cases — SEC Group  
-16. Test Results Summary Table  
+16. Test Cases — OWA Group (Penetration Testing)  
+17. Test Results Summary Table  
 
 ---
 
@@ -1466,7 +1467,347 @@ pip-audit reports zero CVE findings, or any findings are of LOW / MEDIUM severit
 
 ---
 
-## 16. Test Results Summary Table
+## 16. Test Cases — OWA Group (Penetration Testing)
+
+The OWA group covers the OWASP API Security Top 10 (2023 edition) as applied to CogAssess. All test cases in this group are automated via `tests/test_owasp.py`. These tests constitute the static/API-layer penetration test. Dynamic penetration testing via OWASP ZAP is addressed separately in CA-SEC-001.
+
+---
+
+### TC-OWA-001: BOLA — Assessment List Isolation
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-001 |
+| **Requirement(s)** | SRS-SEC-004 |
+| **Description** | Verify that GET /assessments returns only the assessments belonging to the authenticated clinician. A second clinician must not see another clinician's assessments in the list response. OWASP API1:2023 — Broken Object Level Authorization. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py) |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+1. Two clinician accounts exist: `test_clinician` (Clinician A) and `clinician_b` (Clinician B).
+2. Clinician A has at least one assessment in the database.
+3. Both clinicians are authenticated with valid JWT tokens.
+
+**Test Steps:**
+
+1. Register `clinician_b` via POST /clinicians (authenticated as `test_clinician`).
+2. Authenticate `clinician_b` via POST /auth/login.
+3. Create an assessment as Clinician A.
+4. Call GET /assessments using Clinician B's token.
+5. Verify the response list does not contain Clinician A's assessment key.
+
+**Expected Result:**
+
+GET /assessments returns an empty list for Clinician B; Clinician A's assessment_key is absent.
+
+**Pass Criteria:**
+
+- HTTP 200 returned.
+- assessment_key created by Clinician A is not present in the response list.
+
+---
+
+### TC-OWA-002: BOLA — Assessment Detail Isolation
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-002 |
+| **Requirement(s)** | SRS-SEC-004 |
+| **Description** | Verify that GET /assessments/{key} returns 403 or 404 when the assessment key belongs to a different clinician. OWASP API1:2023 — Broken Object Level Authorization. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py) |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+1. Two clinician accounts exist with separate JWT tokens.
+2. Clinician A has created an assessment with a known key.
+
+**Test Steps:**
+
+1. Authenticate as Clinician B.
+2. Call GET /assessments/{key_of_A}.
+3. Verify the response status code is 403 or 404.
+
+**Expected Result:**
+
+Server returns 404 (resource not found for this clinician) or 403 (forbidden).
+
+**Pass Criteria:**
+
+- HTTP status code is 403 or 404.
+- Clinician A's assessment data is not returned to Clinician B.
+
+---
+
+### TC-OWA-003: JWT Algorithm Confusion ("alg: none") Rejected
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-003 |
+| **Requirement(s)** | SRS-SEC-002 |
+| **Description** | Verify that a JWT crafted with alg:none and no signature is rejected with HTTP 401. This validates the mitigation for CVE-2024-33663 (python-jose alg:none bypass). OWASP API2:2023 — Broken Authentication. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py) |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+None — no valid token required.
+
+**Test Steps:**
+
+1. Craft a JWT with header `{"alg":"none","typ":"JWT"}` and a plausible payload `{"sub":"test_clinician","exp":9999999999}`.
+2. Base64url-encode header and payload; set signature to empty string.
+3. Send the crafted token to GET /assessments as the Authorization header.
+4. Verify the server returns 401.
+
+**Expected Result:**
+
+Server rejects the alg:none token and returns HTTP 401 Unauthorized.
+
+**Pass Criteria:**
+
+- HTTP 401 returned.
+- Response body does not contain any assessment data.
+
+---
+
+### TC-OWA-004: JWT Payload Tampering Rejected
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-004 |
+| **Requirement(s)** | SRS-SEC-002 |
+| **Description** | Verify that a JWT whose payload has been modified (while retaining the original signature) is rejected with HTTP 401. The HMAC-SHA256 signature covers both header and payload; any payload change invalidates the signature. OWASP API2:2023 — Broken Authentication. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py) |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+1. A valid JWT for `test_clinician` is available.
+
+**Test Steps:**
+
+1. Obtain a valid JWT via POST /auth/login.
+2. Decode the payload from Base64url.
+3. Modify the `sub` claim to a different username.
+4. Re-encode the modified payload; retain the original header and signature.
+5. Send the tampered token to GET /assessments.
+6. Verify the server returns 401.
+
+**Expected Result:**
+
+Server detects signature mismatch and returns HTTP 401 Unauthorized.
+
+**Pass Criteria:**
+
+- HTTP 401 returned.
+- Server does not process the request or return any data.
+
+---
+
+### TC-OWA-005: JWT Wrong Signature Rejected
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-005 |
+| **Requirement(s)** | SRS-SEC-002 |
+| **Description** | Verify that a JWT with a corrupted (randomly replaced) signature is rejected with HTTP 401. OWASP API2:2023 — Broken Authentication. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py) |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+1. A valid JWT for `test_clinician` is available.
+
+**Test Steps:**
+
+1. Obtain a valid JWT.
+2. Replace the signature segment with an arbitrary Base64url string of equal length.
+3. Send the resulting token to GET /assessments.
+4. Verify the server returns 401.
+
+**Expected Result:**
+
+Server rejects the token and returns HTTP 401 Unauthorized.
+
+**Pass Criteria:**
+
+- HTTP 401 returned.
+
+---
+
+### TC-OWA-006: Error Responses Do Not Leak Internal Details
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-006 |
+| **Requirement(s)** | SRS-SEC-008 |
+| **Description** | Verify that HTTP 4xx error responses do not contain Python stack traces, SQLAlchemy class names, SQLite file paths, or other internal implementation details. OWASP API3:2023 — Broken Object Property Level Authorization / Excessive Data Exposure. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py) |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+1. A valid JWT for `test_clinician` is available.
+
+**Test Steps:**
+
+1. Call GET /assessments/does-not-exist with a valid token (triggers 404).
+2. Inspect the response body for the terms: "traceback", "sqlalchemy", "sqlite", "cogassess.db", `file "`.
+3. Call POST /patients with a body that is missing the required `patient_ref` field (triggers 422).
+4. Inspect the response body for the same terms.
+
+**Expected Result:**
+
+Neither response contains any of the forbidden internal terms.
+
+**Pass Criteria:**
+
+- No forbidden terms found in any error response body.
+
+---
+
+### TC-OWA-007: Mass Assignment — Extra Fields Silently Rejected
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-007 |
+| **Requirement(s)** | SRS-SEC-009 |
+| **Description** | Verify that extra fields posted alongside valid request fields are silently discarded by Pydantic schema validation and do not alter the persisted data model. Fields tested: clinician_id, hashed_password, is_admin. OWASP API3:2023 — Broken Object Property Level Authorization. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py) |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+1. A valid JWT for `test_clinician` is available.
+
+**Test Steps:**
+
+1. POST /patients with a valid body augmented with the extra fields `clinician_id: 999`, `hashed_password: "evil"`, `is_admin: true`.
+2. Verify the response status is 201, 400, or 422 (never 500).
+3. If 201 is returned, verify the response body does not include the extra fields and patient_ref matches the submitted value.
+
+**Expected Result:**
+
+Extra fields are silently dropped by Pydantic; the patient is created with only the valid fields, or the request is rejected with a validation error.
+
+**Pass Criteria:**
+
+- HTTP status code is 201, 400, or 422.
+- If 201: response body contains `patient_ref` = "TEST-MASS-OWA-001" and does not expose extra fields.
+
+---
+
+### TC-OWA-008: SQL Injection Payloads Do Not Cause Server Error
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-008 |
+| **Requirement(s)** | SRS-SEC-009 |
+| **Description** | Verify that SQL injection payloads in the patient_ref field do not produce an HTTP 5xx response. SQLAlchemy ORM uses parameterised queries; payloads are treated as literal strings. Five injection patterns are tested. OWASP API8:2023 — Security Misconfiguration. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py), 5 parametrized sub-tests |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+1. A valid JWT for `test_clinician` is available.
+
+**Injection payloads tested:**
+
+1. `'; DROP TABLE patients; --`
+2. `' OR '1'='1`
+3. `" OR 1=1 --`
+4. `1; SELECT * FROM clinicians --`
+5. `\x00INJECTION` (null-byte injection)
+
+**Test Steps:**
+
+1. For each payload, POST /patients with `{"patient_ref": "<payload>", "l1_language": "English"}`.
+2. Verify the response status is < 500.
+
+**Expected Result:**
+
+Each injection payload is either accepted as a literal string (201), rejected as a duplicate (400), or rejected by validation (422). No payload produces HTTP 500 or causes an unhandled exception.
+
+**Pass Criteria:**
+
+- HTTP status code < 500 for all five payloads.
+
+---
+
+### TC-OWA-009: Oversized Payload Does Not Cause Server Error
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-009 |
+| **Requirement(s)** | SRS-SEC-009 |
+| **Description** | Verify that a request body containing a 100 KB patient_ref string does not cause an HTTP 5xx server error. The server must handle large inputs without crashing. OWASP API4:2023 — Unrestricted Resource Consumption. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py) |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+1. A valid JWT for `test_clinician` is available.
+
+**Test Steps:**
+
+1. POST /patients with a body where `patient_ref` is a string of 100,000 'A' characters.
+2. Verify the response status is < 500.
+
+**Expected Result:**
+
+Server accepts, rejects with validation error, or rejects with a 413 Content Too Large error. Server does not crash or return HTTP 5xx.
+
+**Pass Criteria:**
+
+- HTTP status code < 500.
+
+---
+
+### TC-OWA-010: All Protected Endpoints Require Authentication
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-OWA-010 |
+| **Requirement(s)** | SRS-SEC-001, SRS-FUN-001 |
+| **Description** | Verify that all protected API endpoints return HTTP 401 when called without an Authorization header. Ten endpoints are tested. OWASP API2:2023 — Broken Authentication. |
+| **Verification Method** | Automated — pytest (tests/test_owasp.py), 10 parametrized sub-tests |
+| **Automated?** | Yes |
+
+**Preconditions:**
+
+None — no authentication required for this test.
+
+**Endpoints tested:**
+
+1. GET /patients
+2. POST /patients
+3. GET /patients/{ref}
+4. GET /assessments
+5. POST /assessments
+6. GET /assessments/{key}
+7. GET /auth/me
+8. POST /clinicians
+9. PUT /assessments/{key}/findings
+10. GET /assessments/{key}/findings/history
+
+**Test Steps:**
+
+1. For each endpoint, send the relevant HTTP method to the URL with no Authorization header.
+2. Verify the response status is 401.
+
+**Expected Result:**
+
+Every protected endpoint returns HTTP 401 Unauthorized when no token is provided.
+
+**Pass Criteria:**
+
+- HTTP 401 returned for all 10 endpoints.
+
+---
+
+## 17. Test Results Summary Table
 
 The following table is to be completed at the time of test execution. Each row corresponds to one test case. The "Result" column is populated as: **PASS**, **FAIL**, or **BLOCKED**.
 
@@ -1505,12 +1846,22 @@ The following table is to be completed at the time of test execution. Each row c
 | TC-SOUP-001 | SRS-SOUP-001, SRS-AI-001 | Safety-relevant SOUP packages have exact == pins | | | | | | |
 | TC-SOUP-002 | SRS-SOUP-002, SRS-AI-001 | Safety-relevant SOUP packages are installed | | | | | | |
 | TC-SOUP-003 | SRS-SOUP-003 | No HIGH/CRITICAL CVEs (pip-audit) | | | | | | |
+| TC-OWA-001 | SRS-SEC-004 | BOLA: Clinician B cannot see Clinician A's assessment list | | | | | | |
+| TC-OWA-002 | SRS-SEC-004 | BOLA: Clinician B cannot access Clinician A's assessment detail | | | | | | |
+| TC-OWA-003 | SRS-SEC-002 | JWT alg:none token rejected (CVE-2024-33663 mitigation) | | | | | | |
+| TC-OWA-004 | SRS-SEC-002 | JWT payload tampering rejected | | | | | | |
+| TC-OWA-005 | SRS-SEC-002 | JWT wrong signature rejected | | | | | | |
+| TC-OWA-006 | SRS-SEC-008 | Error responses do not leak stack traces or DB internals | | | | | | |
+| TC-OWA-007 | SRS-SEC-009 | Mass assignment: extra fields silently ignored | | | | | | |
+| TC-OWA-008 | SRS-SEC-009 | SQL injection payloads do not cause HTTP 5xx | | | | | | |
+| TC-OWA-009 | SRS-SEC-009 | Oversized payload does not cause HTTP 5xx | | | | | | |
+| TC-OWA-010 | SRS-SEC-001, SRS-FUN-001 | All protected endpoints return 401 unauthenticated | | | | | | |
 
 **Summary Statistics (to be completed after execution):**
 
 | Metric | Value |
 |--------|-------|
-| Total test cases | 33 |
+| Total test cases | 43 |
 | Executed | |
 | Passed | |
 | Failed | |

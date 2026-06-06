@@ -356,6 +356,8 @@ The following requirements are derived from the risk analysis activities conduct
 | SRS-SEC-005 | Temporary audio files created during pipeline processing shall be deleted from the filesystem immediately after processing is complete, regardless of whether processing succeeded or failed. | M |
 | SRS-SEC-006 | No patient identifiable data shall be transmitted to third-party services. Audio submitted to the Google Cloud STT service shall not be linked to patient identifiers at the API level. | M |
 | SRS-SEC-007 | The SQLite database file shall be stored in the application working directory. Organisations are responsible for applying appropriate filesystem-level access controls and encryption at rest. | M |
+| SRS-SEC-008 | API error responses shall not expose internal implementation details. Response bodies for HTTP 4xx and 5xx errors shall contain only a brief, user-facing message and must not include Python stack traces, SQL error messages, database file paths, ORM class names, or framework version strings. | M |
+| SRS-SEC-009 | The server shall validate and constrain all client-submitted input. Database queries shall use parameterised statements (SQLAlchemy ORM). JSON request bodies shall be validated against a Pydantic schema; unrecognised fields shall be silently discarded. The server shall not crash or return HTTP 5xx in response to malformed, oversized, or injection-pattern input. | M |
 
 ---
 
@@ -458,9 +460,13 @@ The following matrix maps each functional requirement to its corresponding desig
 | SRS-SAF-002 | No scores on patient screens | CA-SAD §4.1 | TC-SAF-002 |
 | SRS-SAF-006 | Empty transcript error state | CA-SAD §4.1 | TC-SAF-003 |
 | SRS-SEC-001 | bcrypt password hashing | CA-SAD §4.2 | TC-SEC-001 |
-| SRS-SEC-002 | JWT HS256 signing | CA-SAD §4.2 | TC-SEC-002 |
+| SRS-SEC-002 | JWT HS256 signing | CA-SAD §4.2 | TC-SEC-002, TC-OWA-003, TC-OWA-004, TC-OWA-005 |
+| SRS-SEC-003 | JWT validation on all protected endpoints — 401 if absent/malformed/expired | CA-SAD §4.2 | TC-OWA-010 |
+| SRS-SEC-004 | Clinician can only access their own assessment data | CA-SAD §4.2 | TC-OWA-001, TC-OWA-002 |
 | SRS-SEC-005 | Temp audio file deletion | CA-SAD §4.2 | TC-SEC-003 |
 | SRS-SEC-006 | No PII to third-party services | CA-SAD §4.2 | TC-SEC-004 |
+| SRS-SEC-008 | Error responses must not expose internal implementation details | CA-SAD §4.2 | TC-OWA-006 |
+| SRS-SEC-009 | Input validation — parameterised queries, schema validation, no 5xx on bad input | CA-SAD §4.2 | TC-OWA-007, TC-OWA-008, TC-OWA-009 |
 | SRS-AI-001 | Locked AI/ML model weights — no retraining during clinical use | CA-SAD §4.4, §9.1 | TC-SOUP-001, TC-SOUP-002 |
 | SRS-AI-002 | AI/ML model update requires SOUP re-evaluation and change control | CA-SAD §4.4, §9.1 | — |
 | SRS-SOUP-001 | Safety-relevant SOUP packages have exact version pins | CA-SAD §9 | TC-SOUP-001 |

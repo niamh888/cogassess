@@ -331,7 +331,81 @@ Contact information for the development team, the deploying institution's data p
 
 ---
 
-## 10. References
+## 10. Penetration Test Record
+
+This section records the results of security testing activities conducted against CogAssess v0.5.0-beta on 2026-06-06. Three activities were carried out: (1) Bandit static analysis, (2) OWASP API Security Top 10 automated tests, and (3) OWASP ZAP dynamic scanning (pending live deployment).
+
+### 10.1 Bandit Static Analysis (CA-PEN-BAD-001)
+
+**Tool:** Bandit v1.9.4  
+**Scope:** main.py, auth.py, database.py, models.py, schemas.py  
+**Date:** 2026-06-06  
+**Command:** `python -m bandit -r main.py auth.py database.py models.py schemas.py -f txt`
+
+**Findings:**
+
+| Finding ID | Severity | Confidence | Rule | Location | Assessment |
+|---|---|---|---|---|---|
+| BAN-001 | Low | High | B404 — subprocess import | main.py:12 | False positive — subprocess is required to invoke ffmpeg for audio format conversion. The process is called with a fixed argument list (no shell=True), which mitigates injection risk. Accepted. |
+| BAN-002 | Low | High | B603 — subprocess without shell=True | main.py:23 | This rule flags subprocess.run() even when shell=False. The call uses a hardcoded argument list; user-controlled input is never passed. Accepted — this pattern is safer than shell=True. |
+| BAN-003 | Low | Medium | B105 — hardcoded password string | main.py:634 | False positive — "bearer" is the OAuth2 token type string in the login response (industry-standard), not a credential. Accepted. |
+
+**Overall result:** 3 Low severity findings, all false positives. No Medium, High, or Critical findings. **PASS.**
+
+### 10.2 OWASP API Security Top 10 — Automated Tests (CA-PEN-OWA-001)
+
+**Tool:** pytest (tests/test_owasp.py)  
+**Date:** 2026-06-06  
+**Reference:** OWASP API Security Top 10 2023 edition  
+**Command:** `python run_tests.py`
+
+**Pre-test finding — BOLA vulnerability (fixed before re-test):**
+
+During test development, three endpoints were found to lack clinician ownership checks:
+
+| Endpoint | Vulnerability | Fix Applied |
+|---|---|---|
+| GET /assessments | Returned all clinicians' assessments (no clinician_id filter) | Added `.filter(models.Assessment.clinician_id == clinician.id)` |
+| GET /assessments/{key} | Returned any assessment regardless of owning clinician | Added `clinician_id == clinician.id` to the query filter |
+| GET /assessments/{key}/findings/history | Same as above | Added `clinician_id == clinician.id` to the query filter |
+
+Note: PUT /assessments/{key}/findings already contained an ownership check (`if a.clinician_id != clinician.id: raise HTTPException(403)`). The read endpoints were the gap.
+
+Patient records (GET /patients, GET /patients/{ref}) have no clinician_id column by design: CogAssess uses a single-site shared-patient model where any authenticated clinician at the site may look up any patient. This is an accepted architectural design for the clinical trial context; multi-site deployments would require a site_id column on the Patient model.
+
+**Results after fix:**
+
+| TC | OWASP Risk | Description | Result |
+|---|---|---|---|
+| TC-OWA-001 | API1 — BOLA | Clinician B cannot see Clinician A's assessments in list | PASS |
+| TC-OWA-002 | API1 — BOLA | Clinician B cannot access Clinician A's assessment detail | PASS |
+| TC-OWA-003 | API2 — Broken Auth | JWT alg:none token rejected | PASS |
+| TC-OWA-004 | API2 — Broken Auth | JWT payload tampering rejected | PASS |
+| TC-OWA-005 | API2 — Broken Auth | JWT wrong signature rejected | PASS |
+| TC-OWA-006 | API3 — Data Exposure | Error responses do not leak internals | PASS |
+| TC-OWA-007 | API3 — Mass Assignment | Extra fields ignored by Pydantic | PASS |
+| TC-OWA-008 | API8 — Injection | SQL injection payloads do not cause 5xx | PASS |
+| TC-OWA-009 | API4 — Resource Consumption | 100 KB oversized payload does not cause 5xx | PASS |
+| TC-OWA-010 | API2 — Broken Auth | All 10 protected endpoints return 401 unauthenticated | PASS |
+
+**Overall result: 10/10 PASS.**
+
+### 10.3 OWASP ZAP Dynamic Scanning (Pending)
+
+OWASP ZAP active scanning requires a running production-equivalent server accessible over HTTP/HTTPS. This activity is deferred until the system is deployed to a staging or production environment. The ZAP scan should be run as follows:
+
+```bash
+docker run -t owasp/zap2docker-stable zap-api-scan.py \
+  -t https://<your-domain>/openapi.json \
+  -f openapi \
+  -r zap_report.html
+```
+
+Results must be documented in a supplementary CA-PEN-ZAP-001 addendum before first-patient-in.
+
+---
+
+## 11. References
 
 | Reference | Description |
 |---|---|
@@ -350,6 +424,6 @@ Contact information for the development team, the deploying institution's data p
 
 ---
 
-*End of CA-SEC-001*
+*End of CA-SEC-001 v0.5.0-beta — Penetration test records added 2026-06-06*
 
 *Document controlled under the CogAssess SDLC documentation suite. For the current revision, refer to the GitHub repository at https://github.com/niamh888/cogassess.*

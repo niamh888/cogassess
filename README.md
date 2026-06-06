@@ -202,7 +202,7 @@ Expected response:
 
 ## Automated testing
 
-The test suite covers 33 test cases mapped to [CA-SVP-001](docs/SVP.md). No GCP account, no ML models, and no running server are required — all heavy dependencies are stubbed at runtime.
+The test suite covers 43 test cases mapped to [CA-SVP-001](docs/SVP.md). No GCP account, no ML models, and no running server are required — all heavy dependencies are stubbed at runtime.
 
 ### First-time setup (test dependencies only)
 
@@ -250,6 +250,7 @@ python -m pytest tests/ -v
 | test_pipeline.py | TC-PIP-002, TC-PIP-004 | Automated |
 | test_security.py | TC-SEC-001, TC-SEC-002, TC-REP-001 | Automated |
 | test_soup.py | TC-SOUP-001, TC-SOUP-002, TC-SOUP-003 | TC-SOUP-001/002 automated; TC-SOUP-003 requires `pip install pip-audit` |
+| test_owasp.py | TC-OWA-001 – TC-OWA-010 | Automated — OWASP API Security Top 10 penetration tests |
 
 Tests that require a live browser (TC-REC-001, TC-REC-002) and tests that require a GCP connection (TC-PIP-001, TC-PIP-003) are defined in CA-SVP-001 as manual verification steps.
 
@@ -381,8 +382,8 @@ A full IEC 62304 Class B software lifecycle document suite is in `docs/`. All do
 - Scoring algorithms are **not yet clinically validated** on a representative patient population
 - SQLite is suitable for **single-site pilot use** only — migrate to PostgreSQL for multi-clinician production deployment
 - Emotion classifier and STT are **optimised for English** — non-English L1 speakers are flagged on the report but not fully accommodated
-- Automated test suite covers 18 of 33 SVP test cases — browser and GCP-dependent cases remain manual
-- Penetration testing not yet completed — required before production deployment
+- Automated test suite covers 29 of 43 SVP test cases — browser and GCP-dependent cases remain manual
+- Dynamic penetration testing (OWASP ZAP) not yet completed — static/API-layer pen tests (TC-OWA-001–010) are passing
 
 ---
 

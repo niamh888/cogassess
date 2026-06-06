@@ -208,7 +208,7 @@ Before deploying to any environment where real patient data will be processed, t
 - CORS origins must be restricted to the specific deployment domain
 - Rate limiting must be applied to `/auth/login`
 - A minimum 256-bit random `SECRET_KEY` must be stored in a secrets manager
-- A penetration test must be conducted and findings remediated
+- API-layer penetration test (OWASP API Security Top 10, TC-OWA-001–010) must be passing — **completed 2026-06-06, all 10 PASS**; dynamic penetration test (OWASP ZAP) must be conducted on the live server and all Critical/High findings remediated before first-patient-in
 - The clinical validation study must be completed or a risk acceptance decision formally recorded
 
 ---
@@ -234,7 +234,7 @@ The following objectives are targeted for CogAssess v1.0, at which point the sof
 | Automated test suite | Unit tests (pytest) and integration tests for all five pipeline stages and all API endpoints, achieving minimum 80% line coverage |
 | Clinical validation study | Prospective study on a representative patient population to validate scoring algorithms and establish normative ranges per condition preset |
 | PostgreSQL migration | Replace SQLite with PostgreSQL to support multi-clinician concurrent access and row-level locking |
-| Penetration testing | Third-party penetration test of the API and authentication layer; all critical and high findings remediated before release |
+| Penetration testing | Internal API-layer pen test (OWASP Top 10, TC-OWA-001–010) completed 2026-06-06 — all PASS. Dynamic OWASP ZAP scan and third-party pen test review required before clinical release. |
 | Rate limiting | Implement request rate limiting on `/auth/login` and audio upload endpoints |
 | File size validation | Enforce a maximum audio upload size (target: 25 MB) with appropriate error response |
 | HttpOnly cookie token storage | Migrate JWT token from localStorage to HttpOnly cookies to mitigate XSS risk |
