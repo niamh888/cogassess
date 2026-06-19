@@ -219,9 +219,14 @@ def test_error_responses_do_not_leak_internals(client, auth_headers):
         f"Body: {r404.text[:300]}"
     )
 
-    # 422 — missing required fields
-    r422 = client.post("/patients", json={"not_a_real_field": True}, headers=auth_headers)
-    assert r422.status_code == 422
+    # 422 — missing required fields on /assessments (patient_ref + date_of_assessment required)
+    # Note: POST /patients is not used here because patient_ref is auto-generated,
+    # making an empty body valid. /assessments always requires patient_ref and date_of_assessment.
+    r422 = client.post("/assessments", json={"not_a_real_field": True}, headers=auth_headers)
+    assert r422.status_code == 422, (
+        f"TC-OWA-006: expected 422 for missing required assessment fields, "
+        f"got {r422.status_code}: {r422.text[:200]}"
+    )
     body422 = r422.text.lower()
     leaked_422 = [t for t in _FORBIDDEN_TERMS if t in body422]
     assert not leaked_422, (

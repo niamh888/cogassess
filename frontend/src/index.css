@@ -163,4 +163,8 @@ button:hover { background: #f3f4f6; }
   .no-print { display: none !important; }
   header, footer, nav { display: none !important; }
   body { background: #fff !important; }
+  /* Avoid splitting individual task/summary panels across pages */
+  .task-panel-print { break-inside: avoid; page-break-inside: avoid; }
+  /* Ensure details/summary accordion content is visible */
+  details, details > * { display: block !important; }
 }

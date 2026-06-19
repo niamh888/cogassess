@@ -43,3 +43,42 @@ _Reference: CA-SVP-001_
 | Status | Open |
 
 ---
+
+## ANO-004 · TC-OWA-006 · 2026-06-19 17:10:37
+
+| Field | Value |
+|---|---|
+| Run ID | TR-20260619-171037 |
+| Tester | Niamh |
+| Test function | test_error_responses_do_not_leak_internals |
+| SVP reference | TC-OWA-006 |
+| Error | E    +  where 201 = <Response [201 Created]>.status_code |
+| Status | Open |
+
+---
+
+## ANO-005 · TC-SOUP-003 · 2026-06-19 17:10:37
+
+| Field | Value |
+|---|---|
+| Run ID | TR-20260619-171037 |
+| Tester | Niamh |
+| Test function | test_no_critical_cves_in_soup_packages |
+| SVP reference | TC-SOUP-003 |
+| Error | E   assert not ["  [GHSA-537c-gmf6-5ccf] cryptography 48.0.0 — pyca/cryptography's wheels include a statically linked copy of OpenSSL. The versions of OpenSSL included in wheels prior", '  [CVE-2026-54283] starlette 1.2.1 — ### Summary `request.form()` accepts `max_fields` and `max_part_size` to bou |
+| Status | Open |
+
+---
+
+## ANO-006 · TC-SOUP-003 · 2026-06-19 17:19:43
+
+| Field | Value |
+|---|---|
+| Run ID | TR-20260619-171943 |
+| Tester | Niamh |
+| Test function | test_no_critical_cves_in_soup_packages |
+| SVP reference | TC-SOUP-003 |
+| Error | E   assert not ["  [GHSA-537c-gmf6-5ccf] cryptography 48.0.0 — pyca/cryptography's wheels include a statically linked copy of OpenSSL. The versions of OpenSSL included in wheels prior", '  [CVE-2026-54283] starlette 1.2.1 — ### Summary `request.form()` accepts `max_fields` and `max_part_size` to bou |
+| Status | Open |
+
+---

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ScoreRing from "../components/ScoreRing";
 import { TASKS, DOMAIN_COLORS } from "../data/tasks";
@@ -152,7 +152,7 @@ function TaskPanel({ taskResult, taskDef }) {
   // Skipped task — show a simple notice instead of scores
   if (scores?.skipped) {
     return (
-      <div style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-secondary)", padding: "1.5rem", opacity: 0.75 }}>
+      <div className="task-panel-print" style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-secondary)", padding: "1.5rem", opacity: 0.75 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <div>
             <p style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--color-text-tertiary)", margin: "0 0 3px", textTransform: "uppercase" }}>
@@ -185,7 +185,7 @@ function TaskPanel({ taskResult, taskDef }) {
   const flags = report?.flags ?? [];
 
   return (
-    <div style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-primary)", padding: "1.5rem" }}>
+    <div className="task-panel-print" style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-primary)", padding: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <div>
           <p style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--color-text-tertiary)", margin: "0 0 3px", textTransform: "uppercase" }}>
@@ -262,7 +262,7 @@ function CumulativePanel({ taskResults }) {
   const uniqueFlags = Object.values(flagMap).sort((a, b) => SEV_RANK[b.severity] - SEV_RANK[a.severity]);
 
   return (
-    <div style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-primary)", padding: "1.5rem" }}>
+    <div className="task-panel-print" style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-primary)", padding: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
         <div>
           <p style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--color-text-tertiary)", margin: "0 0 3px", textTransform: "uppercase" }}>
@@ -340,7 +340,7 @@ function PopulationSection({ taskResults }) {
   const domainEntries = domains.map((d, i) => ({ domain: d, score: avg[d], color: MARKER_COLORS[i] }));
 
   return (
-    <div style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-primary)", padding: "1.5rem 2rem", marginTop: 20 }}>
+    <div className="task-panel-print" style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-primary)", padding: "1.5rem 2rem", marginTop: 20 }}>
       <div style={{ marginBottom: 16 }}>
         <p style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--color-text-tertiary)", margin: "0 0 3px", textTransform: "uppercase" }}>
           Population comparison
@@ -439,6 +439,31 @@ export default function ReportPage() {
   const [conditionsSaving,  setConditionsSaving]  = useState(false);
   const [conditionsSaved,   setConditionsSaved]   = useState(false);
 
+  const transcriptsRef = useRef(null);
+  const [searchParams]  = useSearchParams();
+
+  // Open transcripts accordion before any print (button click or Ctrl+P)
+  useEffect(() => {
+    function openTranscripts() {
+      if (transcriptsRef.current) transcriptsRef.current.open = true;
+    }
+    window.addEventListener("beforeprint", openTranscripts);
+    return () => window.removeEventListener("beforeprint", openTranscripts);
+  }, []);
+
+  // Auto-trigger print when navigated here with ?print=1 (from dashboard icon)
+  useEffect(() => {
+    if (!loading && assessment && searchParams.get("print") === "1") {
+      const t = setTimeout(() => window.print(), 300);
+      return () => clearTimeout(t);
+    }
+  }, [loading, assessment, searchParams]);
+
+  function printReport() {
+    if (transcriptsRef.current) transcriptsRef.current.open = true;
+    window.print();
+  }
+
   useEffect(() => {
     fetch(`${API}/assessments/${key}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
@@ -477,8 +502,21 @@ export default function ReportPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <Link to="/dashboard" style={{ fontSize: 13, color: "var(--color-text-secondary)", textDecoration: "none" }}>← Dashboard</Link>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: "10px 0 4px", color: "var(--color-text-primary)" }}>
+          <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+            <Link to="/dashboard" style={{ fontSize: 13, color: "var(--color-text-secondary)", textDecoration: "none" }}>← Dashboard</Link>
+            <button
+              onClick={printReport}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 11px", fontSize: 12, background: "var(--color-background-secondary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", cursor: "pointer", color: "var(--color-text-secondary)", fontFamily: "var(--font-sans)" }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              Print / Save as PDF
+            </button>
+          </div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px", color: "var(--color-text-primary)" }}>
             Clinical Report
           </h1>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13, color: "var(--color-text-secondary)" }}>
@@ -493,7 +531,7 @@ export default function ReportPage() {
           {reason && <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "6px 0 0" }}><strong>Reason:</strong> {reason}</p>}
           {notes  && <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "4px 0 0" }}><strong>Notes:</strong> {notes}</p>}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+        <div className="no-print" style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
           <button
             onClick={() => navigate(`/assessment/${key}/findings`)}
             style={{ padding: "9px 18px", borderRadius: "var(--border-radius-md)", background: "var(--color-accent)", color: "#fff", border: "none", fontWeight: 600, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}
@@ -539,7 +577,7 @@ export default function ReportPage() {
               </div>
 
               {/* Editable interruptions */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="no-print" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>Interruptions:</label>
                   <select
@@ -627,7 +665,7 @@ export default function ReportPage() {
       {/* Transcript accordion */}
       {task_results.length > 0 && (
         <div style={{ marginTop: 32 }}>
-          <details>
+          <details ref={transcriptsRef}>
             <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--color-text-secondary)", padding: "8px 0", userSelect: "none" }}>
               Transcripts ({task_results.length} task{task_results.length > 1 ? "s" : ""})
             </summary>
