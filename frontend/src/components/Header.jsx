@@ -37,9 +37,9 @@ export default function Header() {
           aria-label="CogAssess home"
         >
           <img
-            src="/memorytell-logo.png"
-            alt="MemoryTell"
-            style={{ height: 24, width: "auto", display: "block" }}
+            src="/sjl_transparent.png"
+            alt="St John Lynch"
+            style={{ height: 28, width: "auto", display: "block" }}
           />
         </Link>
 

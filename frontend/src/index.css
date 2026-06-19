@@ -1,44 +1,44 @@
 :root {
   --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
 
-  /* MemoryTell brand — forest green */
-  --color-brand:        #1e3d2a;   /* primary dark green (logo colour) */
-  --color-brand-mid:    #2d5c3f;   /* slightly lighter for hover states */
-  --color-brand-light:  #e8f2ec;   /* very light green tint for backgrounds */
-  --color-brand-border: #b8d4c0;   /* green-tinted border */
+  /* CogAssess brand — duck-egg blue */
+  --color-brand:        #1d666e;   /* primary dark teal */
+  --color-brand-mid:    #267882;   /* slightly lighter for hover states */
+  --color-brand-light:  #e5f4f5;   /* very light teal tint for backgrounds */
+  --color-brand-border: #a8d4d8;   /* teal-tinted border */
 
   /* Text */
   --color-text-primary:   #111827;
   --color-text-secondary: #4b5563;
   --color-text-tertiary:  #9ca3af;
   --color-text-success:   #1e6b3c;
-  --color-text-info:      #1e3d2a;
+  --color-text-info:      #1d666e;
   --color-text-warning:   #854f0b;
   --color-text-danger:    #993c1d;
 
   /* Backgrounds */
   --color-background-primary:   #ffffff;
-  --color-background-secondary: #f5f8f6;   /* soft green-white */
+  --color-background-secondary: #f0f8f9;   /* soft duck-egg tint */
   --color-background-success:   #e8f2ec;
   --color-background-warning:   #faeeda;
   --color-background-danger:    #faece7;
 
-  /* Accent / brand — replaces blue with MemoryTell green */
-  --color-accent: #1e3d2a;
+  /* Accent / brand */
+  --color-accent: #1d666e;
 
   /* Surfaces */
   --color-surface: #ffffff;
 
   /* Borders */
-  --color-border-primary:   #e2e8e4;   /* faint green tint */
-  --color-border-tertiary:  #e2e8e4;
-  --color-border-secondary: #c8d5cc;
+  --color-border-primary:   #dceef0;   /* faint duck-egg tint */
+  --color-border-tertiary:  #dceef0;
+  --color-border-secondary: #b8d8dc;
   --color-border-warning:   #f5d08a;
   --color-border-danger:    #f3b8a8;
-  --color-border-info:      #b8d4c0;
+  --color-border-info:      #a8d4d8;
 
-  /* Info state (was blue — now green-tinted) */
-  --color-background-info: #e8f2ec;
+  /* Info state */
+  --color-background-info: #e5f4f5;
 
   /* Radii */
   --border-radius-md: 6px;
