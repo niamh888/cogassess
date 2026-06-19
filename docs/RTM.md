@@ -218,6 +218,7 @@ This Requirements Traceability Matrix (RTM) provides a complete mapping from eve
 | SRS-SAF-006 | Empty transcript → error state; no invalid scores produced | M | TC-PIP-004, TC-SAF-003 | Auto | PASS |
 | SRS-SAF-007 | Flag severity thresholds consistently applied | M | — | Clinical validation | NOT TESTED |
 | SRS-SAF-008 | Assessment records stored immutably on completion | M | — | Code review | NOT TESTED |
+| SRS-SAF-009 | Under-18 modal warning displayed and enforced at intake | M | TC-SAF-004 | Manual / Browser | NOT TESTED |
 
 ---
 

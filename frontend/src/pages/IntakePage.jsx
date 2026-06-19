@@ -10,7 +10,6 @@ const AGE_BANDS     = ["Under 18","18–24","25–34","35–44","45–54","55–
 const REFERRAL_SRCS = ["GP","Neurology","Psychiatry","Memory clinic","Psychology","Self-referral","Other"];
 const REASONS       = ["Cognitive decline concern","Dementia assessment","Post-stroke","Post-COVID cognition","Routine monitoring","Research study","Other"];
 const ENVIRONMENTS  = ["Quiet clinical room","Clinical setting — some background noise","Home visit — quiet","Home visit — noisy","Remote / video call","Noisy environment","Other"];
-const INTERRUPTIONS = ["None","Minor — brief, minimal impact","Significant — may have affected responses"];
 
 const STEP_LABELS = ["Patient", "Assessment", "Tasks"];
 
@@ -36,12 +35,18 @@ export default function IntakePage() {
   const [reason,            setReason]            = useState("");
   const [notes,             setNotes]             = useState("");
   const [environment,       setEnvironment]       = useState("Quiet clinical room");
-  const [hadInterruptions,  setHadInterruptions]  = useState("None");
-  const [interruptionNotes, setInterruptionNotes] = useState("");
 
   // Step 3 — task battery
   const [selectedCondition, setSelectedCondition] = useState("general_screen");
   const [selectedTaskIds,   setSelectedTaskIds]   = useState(["routine", "fluency", "memory"]);
+
+  // Under-18 safeguard
+  const [showUnder18Modal,    setShowUnder18Modal]    = useState(false);
+  const [under18Acknowledged, setUnder18Acknowledged] = useState(false);
+
+  // Unvalidated indication safeguard
+  const [showUnvalidatedModal,    setShowUnvalidatedModal]    = useState(false);
+  const [pendingCondition,        setPendingCondition]        = useState(null);
 
   const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
@@ -61,13 +66,40 @@ export default function IntakePage() {
 
   function handleDobChange(val) {
     setDob(val);
-    setAgeBand(ageBandFromDob(val));
+    const band = ageBandFromDob(val);
+    setAgeBand(band);
+    if (band === "Under 18") {
+      setUnder18Acknowledged(false);
+      setShowUnder18Modal(true);
+    }
+  }
+
+  function handleAgeBandChange(val) {
+    setAgeBand(val);
+    if (val === "Under 18") {
+      setUnder18Acknowledged(false);
+      setShowUnder18Modal(true);
+    }
   }
 
   function applyConditionPreset(conditionId) {
-    setSelectedCondition(conditionId);
     const condition = CONDITIONS.find(c => c.id === conditionId);
-    if (condition) setSelectedTaskIds([...condition.tasks]);
+    if (!condition) return;
+    if (!condition.validated) {
+      setPendingCondition(condition);
+      setShowUnvalidatedModal(true);
+      return;
+    }
+    setSelectedCondition(conditionId);
+    setSelectedTaskIds([...condition.tasks]);
+  }
+
+  function confirmUnvalidatedCondition() {
+    if (!pendingCondition) return;
+    setSelectedCondition(pendingCondition.id);
+    setSelectedTaskIds([...pendingCondition.tasks]);
+    setShowUnvalidatedModal(false);
+    setPendingCondition(null);
   }
 
   function toggleTask(taskId) {
@@ -79,19 +111,27 @@ export default function IntakePage() {
 
   async function handleStep1(e) {
     e.preventDefault();
+    if (ageBand === "Under 18" && !under18Acknowledged) {
+      setShowUnder18Modal(true);
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
       const res = await fetch(`${API}/patients`, {
         method: "POST",
         headers: authHeaders,
-        body: JSON.stringify({ patient_ref: patientRef, date_of_birth: dob || null, age_band: ageBand || null, language, l1_language: l1Language }),
+        body: JSON.stringify({ patient_ref: patientRef || null, date_of_birth: dob || null, age_band: ageBand || null, language, l1_language: l1Language }),
       });
-      if (!res.ok) {
+      if (res.ok) {
+        const created = await res.json();
+        setPatientRef(created.patient_ref);  // use the assigned ref (auto-generated or manual)
+      } else {
         const err = await res.json().catch(() => ({}));
         if (!(res.status === 400 && err.detail?.includes("already exists"))) {
           throw new Error(err.detail || "Could not register patient");
         }
+        // Patient already exists — patientRef stays as typed (repeat assessment)
       }
       setStep(2);
     } catch (e) {
@@ -128,8 +168,6 @@ export default function IntakePage() {
           notes: notes || null,
           selected_tasks: selectedTaskIds,
           environment,
-          had_interruptions: hadInterruptions,
-          interruption_notes: interruptionNotes || null,
         }),
       });
       if (!res.ok) {
@@ -201,9 +239,9 @@ export default function IntakePage() {
               <strong>Data protection:</strong> Use a pseudonymised ID only. Do not enter the patient's name (GDPR Article 89).
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label htmlFor="patient-ref" style={labelStyle}>Patient reference ID <span style={{ color: "var(--color-text-danger)" }}>*</span></label>
-              <input id="patient-ref" type="text" required value={patientRef} onChange={e => setPatientRef(e.target.value)} placeholder="e.g. PT-2026-0042" style={fieldStyle} />
-              <p style={{ fontSize: 12, color: "var(--color-text-tertiary)", margin: "4px 0 0" }}>Pseudonymised only — no names.</p>
+              <label htmlFor="patient-ref" style={labelStyle}>Patient reference ID</label>
+              <input id="patient-ref" type="text" value={patientRef} onChange={e => setPatientRef(e.target.value)} placeholder="Leave blank to auto-generate (e.g. PT-2026-0001)" style={fieldStyle} />
+              <p style={{ fontSize: 12, color: "var(--color-text-tertiary)", margin: "4px 0 0" }}>Leave blank to auto-assign a unique ID. For repeat assessments enter the existing patient reference. Pseudonymised only — no names.</p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div>
@@ -212,7 +250,7 @@ export default function IntakePage() {
               </div>
               <div>
                 <label htmlFor="age-band" style={labelStyle}>Age band <span style={{ fontWeight: 400, color: "var(--color-text-tertiary)" }}>(auto-set from DOB)</span></label>
-                <select id="age-band" value={ageBand} onChange={e => setAgeBand(e.target.value)} style={fieldStyle}>
+                <select id="age-band" value={ageBand} onChange={e => handleAgeBandChange(e.target.value)} style={fieldStyle}>
                   <option value="">— Select —</option>
                   {AGE_BANDS.map(b => <option key={b} value={b}>{b}</option>)}
                 </select>
@@ -239,7 +277,7 @@ export default function IntakePage() {
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
             <button type="button" onClick={() => navigate("/dashboard")} style={{ padding: "10px 20px", background: "transparent", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", fontSize: 14, cursor: "pointer", fontFamily: "var(--font-sans)" }}>Cancel</button>
-            <button type="submit" disabled={loading || !patientRef} style={{ flex: 1, padding: "10px 20px", background: "var(--color-accent)", color: "#fff", border: "none", borderRadius: "var(--border-radius-md)", fontSize: 14, fontWeight: 600, cursor: (loading || !patientRef) ? "not-allowed" : "pointer", opacity: (loading || !patientRef) ? 0.6 : 1, fontFamily: "var(--font-sans)" }}>
+            <button type="submit" disabled={loading} style={{ flex: 1, padding: "10px 20px", background: "var(--color-accent)", color: "#fff", border: "none", borderRadius: "var(--border-radius-md)", fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1, fontFamily: "var(--font-sans)" }}>
               {loading ? "Checking…" : "Continue →"}
             </button>
           </div>
@@ -289,26 +327,15 @@ export default function IntakePage() {
 
             <div style={{ borderTop: "0.5px solid var(--color-border-primary)", paddingTop: 16, marginTop: 8 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 12px" }}>Session conditions</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div>
-                  <label htmlFor="environment" style={labelStyle}>Assessment environment</label>
-                  <select id="environment" value={environment} onChange={e => setEnvironment(e.target.value)} style={fieldStyle}>
-                    {ENVIRONMENTS.map(e => <option key={e} value={e}>{e}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="interruptions" style={labelStyle}>Interruptions</label>
-                  <select id="interruptions" value={hadInterruptions} onChange={e => setHadInterruptions(e.target.value)} style={fieldStyle}>
-                    {INTERRUPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
-                  </select>
-                </div>
+              <div>
+                <label htmlFor="environment" style={labelStyle}>Assessment environment</label>
+                <select id="environment" value={environment} onChange={e => setEnvironment(e.target.value)} style={fieldStyle}>
+                  {ENVIRONMENTS.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+                <p style={{ fontSize: 12, color: "var(--color-text-tertiary)", margin: "4px 0 0" }}>
+                  Any interruptions that occur during the session can be recorded on the report page afterwards.
+                </p>
               </div>
-              {hadInterruptions !== "None" && (
-                <div>
-                  <label htmlFor="interruption-notes" style={labelStyle}>Interruption details</label>
-                  <input id="interruption-notes" type="text" value={interruptionNotes} onChange={e => setInterruptionNotes(e.target.value)} placeholder="Brief description of what happened…" style={fieldStyle} />
-                </div>
-              )}
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -345,6 +372,8 @@ export default function IntakePage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
                       <i className={`ti ${c.icon}`} style={{ fontSize: 14, color: active ? c.color : "var(--color-text-tertiary)" }} aria-hidden="true" />
                       <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? c.color : "var(--color-text-primary)" }}>{c.label}</span>
+                      {c.validated && <span style={{ fontSize: 10, fontWeight: 700, color: "#0f6e56", background: "#e1f5ee", padding: "1px 6px", borderRadius: 100, border: "0.5px solid #a7f3d0", flexShrink: 0 }}>CLINICAL USE</span>}
+                      {!c.validated && <span style={{ fontSize: 10, fontWeight: 700, color: "#854f0b", background: "#faeeda", padding: "1px 6px", borderRadius: 100, border: "0.5px solid #f5d08a", flexShrink: 0 }}>IN DEVELOPMENT</span>}
                     </div>
                     <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", margin: 0, lineHeight: 1.4 }}>{c.description}</p>
                   </button>
@@ -422,6 +451,77 @@ export default function IntakePage() {
             </button>
           </div>
         </form>
+      )}
+
+      {/* ── Unvalidated indication modal ────────────────────────────────── */}
+      {showUnvalidatedModal && pendingCondition && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
+          <div style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "2px solid var(--color-border-warning)", padding: "2rem", maxWidth: 500, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <span style={{ fontSize: 26 }} aria-hidden="true">⚠️</span>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-warning)", margin: 0 }}>Warning — Not Validated for This Indication</h2>
+            </div>
+            <p style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.6, margin: "0 0 10px" }}>
+              CogAssess is currently approved for clinical investigation use in <strong>Early / possible dementia</strong> only (per CA-IB-001).
+            </p>
+            <p style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.6, margin: "0 0 10px" }}>
+              The <strong>{pendingCondition.label}</strong> preset has not been validated by the manufacturer and is not approved for use in the current clinical investigation.
+            </p>
+            <p style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.6, margin: "0 0 24px" }}>
+              Proceeding is permitted for exploratory research purposes only and must not be used to inform clinical decisions. Any such use should be reported to the manufacturer: <strong>info@memorytell.com</strong>
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => { setShowUnvalidatedModal(false); setPendingCondition(null); }}
+                style={{ padding: "11px 20px", background: "var(--color-accent)", color: "#fff", border: "none", borderRadius: "var(--border-radius-md)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}
+              >
+                ← Go back and select an approved indication
+              </button>
+              <button
+                type="button"
+                onClick={confirmUnvalidatedCondition}
+                style={{ padding: "11px 20px", background: "transparent", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", fontSize: 13, color: "var(--color-text-tertiary)", cursor: "pointer", fontFamily: "var(--font-sans)" }}
+              >
+                Proceed anyway — exploratory research use only, not for clinical decisions
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Under-18 warning modal ──────────────────────────────────────── */}
+      {showUnder18Modal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
+          <div style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "2px solid var(--color-border-warning)", padding: "2rem", maxWidth: 480, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <span style={{ fontSize: 26 }} aria-hidden="true">⚠️</span>
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--color-text-warning)", margin: 0 }}>Warning — Outside Intended Use</h2>
+            </div>
+            <p style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.6, margin: "0 0 10px" }}>
+              CogAssess is validated for use with adults aged <strong>18 years and over</strong>. This patient's age is below 18.
+            </p>
+            <p style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.6, margin: "0 0 24px" }}>
+              Proceeding is outside the validated intended use of this software, is not advised, and may constitute misuse. Any such use should be reported to the manufacturer: <strong>info@memorytell.com</strong>
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => { setDob(""); setAgeBand(""); setShowUnder18Modal(false); }}
+                style={{ padding: "11px 20px", background: "var(--color-accent)", color: "#fff", border: "none", borderRadius: "var(--border-radius-md)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}
+              >
+                ← Go back and correct patient details
+              </button>
+              <button
+                type="button"
+                onClick={() => { setUnder18Acknowledged(true); setShowUnder18Modal(false); }}
+                style={{ padding: "11px 20px", background: "transparent", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", fontSize: 13, color: "var(--color-text-tertiary)", cursor: "pointer", fontFamily: "var(--font-sans)" }}
+              >
+                Proceed anyway — I acknowledge this is outside the validated intended use
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -316,7 +316,7 @@ The 14 skipped test cases require a live browser or GCP connection and are addre
 
 | Gate | Criterion | Status |
 |------|-----------|--------|
-| G-01 | All 43 SVP test cases: Failed = 0 | PASS (2026-06-06) |
+| G-01 | All 44 SVP test cases: Failed = 0 | PASS (2026-06-06) |
 | G-02 | System-level manual test complete; no Critical/Major defects | PENDING |
 | G-03 | OWASP ZAP: no Critical/High open | PENDING |
 | G-04 | Usability: SUS ≥ 70; no safety use errors | PENDING |

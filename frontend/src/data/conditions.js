@@ -6,6 +6,7 @@ export const CONDITIONS = [
     icon: "ti-clipboard-check",
     color: "#185fa5",
     tasks: ["routine", "fluency", "memory"],
+    validated: false,
   },
   {
     id: "early_dementia",
@@ -14,6 +15,7 @@ export const CONDITIONS = [
     icon: "ti-brain",
     color: "#7c3aed",
     tasks: ["routine", "fluency", "fluency_phonological", "story_retell"],
+    validated: true,   // approved for current clinical investigation (CA-IB-001)
   },
   {
     id: "tbi_concussion",
@@ -22,6 +24,7 @@ export const CONDITIONS = [
     icon: "ti-first-aid-kit",
     color: "#dc2626",
     tasks: ["read_aloud", "news_event", "story_retell", "subjective_complaint"],
+    validated: false,
   },
   {
     id: "asd",
@@ -30,6 +33,7 @@ export const CONDITIONS = [
     icon: "ti-puzzle",
     color: "#0891b2",
     tasks: ["read_aloud", "memory", "fluency", "routine"],
+    validated: false,
   },
   {
     id: "aspergers",
@@ -38,6 +42,7 @@ export const CONDITIONS = [
     icon: "ti-puzzle-2",
     color: "#0e7490",
     tasks: ["read_aloud", "routine", "memory", "news_event"],
+    validated: false,
   },
   {
     id: "depression_anxiety",
@@ -46,6 +51,7 @@ export const CONDITIONS = [
     icon: "ti-mood-sad",
     color: "#d97706",
     tasks: ["memory", "routine", "subjective_complaint"],
+    validated: false,
   },
   {
     id: "parkinsons_motor",
@@ -54,6 +60,7 @@ export const CONDITIONS = [
     icon: "ti-activity",
     color: "#059669",
     tasks: ["read_aloud", "routine", "fluency"],
+    validated: false,
   },
   {
     id: "dyslexia",
@@ -62,5 +69,6 @@ export const CONDITIONS = [
     icon: "ti-alphabet-latin",
     color: "#db2777",
     tasks: ["read_aloud", "fluency_phonological", "fluency", "memory"],
+    validated: false,
   },
 ];

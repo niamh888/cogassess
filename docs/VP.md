@@ -251,7 +251,7 @@ CogAssess shall not be released for use in a clinical investigation until all of
 
 | Gate | Criterion | Evidence |
 |------|-----------|---------|
-| G-01 | All 43 SVP test cases executed; Failed = 0 | Test log (logs/test_log_*.md) |
+| G-01 | All 44 SVP test cases executed; Failed = 0 | Test log (logs/test_log_*.md) |
 | G-02 | System-level manual test session complete; no Critical/Major defects open | CA-STR-001 |
 | G-03 | OWASP ZAP dynamic scan: no Critical/High findings open | CA-SEC-001 §10.3 addendum |
 | G-04 | Usability evaluation complete; SUS ≥ 70; no safety-relevant use errors | CA-UER-001 |

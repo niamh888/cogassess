@@ -1210,6 +1210,61 @@ The pipeline explicitly signals an error. The composite score is not `0` or any 
 
 ---
 
+### TC-SAF-004: Under-18 Modal Warning Displayed and Enforced
+
+| Field | Detail |
+|-------|--------|
+| **Test Case ID** | TC-SAF-004 |
+| **Requirement(s)** | SRS-SAF-009 |
+| **Description** | Verify that when a clinician enters a date of birth or selects an age band that indicates a patient is under 18 years of age, a mandatory modal warning is displayed, the primary action is "Go back", a secondary "Proceed anyway" acknowledgement is available, and the system does not advance to Step 2 without one of those actions being taken. |
+| **Verification Method** | Manual (browser) |
+
+**Preconditions:**
+
+1. CogAssess frontend running and accessible in a browser.
+2. Clinician is authenticated and on the New Assessment → Step 1 (Patient details) screen.
+
+**Test Steps (DOB path):**
+
+1. Enter a date of birth that gives an age below 18 (e.g. born 10 years ago).
+2. Observe the age band field auto-populates to "Under 18".
+3. Confirm a modal warning appears immediately.
+4. Verify the modal title reads "Warning — Outside Intended Use".
+5. Verify the modal body states the system is validated for adults aged 18 and over.
+6. Verify the modal body states that proceeding is outside the validated intended use and may constitute misuse.
+7. Verify the manufacturer contact address (info@memorytell.com) is visible in the modal.
+8. Verify the primary button reads "Go back and correct patient details".
+9. Verify a secondary less-prominent button allows proceeding with explicit acknowledgement.
+10. Click "Go back" — confirm the modal closes and the DOB field is cleared.
+11. Re-enter the under-18 DOB. This time click "Proceed anyway".
+12. Confirm the modal closes and the clinician can now click Continue to advance to Step 2.
+
+**Test Steps (age band path):**
+
+13. Without entering a DOB, manually select "Under 18" from the age band dropdown.
+14. Confirm the modal appears as in steps 3–9 above.
+
+**Test Steps (form submit guard):**
+
+15. Enter an under-18 DOB but close the modal via browser back/escape without acknowledging.
+16. Attempt to click the "Continue →" button.
+17. Confirm the modal re-appears and the form does not submit.
+
+**Expected Result:**
+
+Modal is displayed whenever under-18 age is detected via DOB or age band. Primary action clears the entry. Proceeding requires explicit secondary acknowledgement. Form cannot be submitted without one of these actions.
+
+**Pass Criteria:**
+
+- Modal appears on under-18 DOB entry.
+- Modal appears on manual "Under 18" age band selection.
+- Modal title, body text, and contact address are correct.
+- "Go back" clears DOB field and closes modal.
+- "Proceed anyway" closes modal and allows form to advance.
+- Continue button is blocked unless modal has been actioned.
+
+---
+
 ## 15. Test Cases — SEC Group
 
 Security requirements verify that the system implements appropriate security controls for a clinical application handling pseudonymised patient data.
@@ -1839,6 +1894,7 @@ The following table is to be completed at the time of test execution. Each row c
 | TC-SAF-001 | SRS-SAF-001 | Clinician-only notice on report | | | | | | |
 | TC-SAF-002 | SRS-SAF-002 | No scores on any patient-facing screen | | | | | | |
 | TC-SAF-003 | SRS-SAF-006 | Empty transcript: error not zero score | | | | | | |
+| TC-SAF-004 | SRS-SAF-009 | Under-18 modal warning displayed and enforced | | | | | | |
 | TC-SEC-001 | SRS-SEC-001 | bcrypt hash stored, not plaintext | | | | | | |
 | TC-SEC-002 | SRS-SEC-002 | JWT header algorithm is HS256 | | | | | | |
 | TC-SEC-003 | SRS-SEC-005 | Temp audio file deleted after pipeline | | | | | | |
@@ -1861,7 +1917,7 @@ The following table is to be completed at the time of test execution. Each row c
 
 | Metric | Value |
 |--------|-------|
-| Total test cases | 43 |
+| Total test cases | 44 |
 | Executed | |
 | Passed | |
 | Failed | |

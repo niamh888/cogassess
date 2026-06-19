@@ -13,7 +13,7 @@ class Token(BaseModel):
 # ── Patients ──────────────────────────────────────────────────────────────────
 
 class PatientCreate(BaseModel):
-    patient_ref: str
+    patient_ref: Optional[str] = None
     date_of_birth: Optional[str] = None
     age_band: Optional[str] = None
     language: str = "en"
@@ -60,6 +60,13 @@ class AssessmentOut(BaseModel):
     task_count: int
 
     model_config = {"from_attributes": True}
+
+
+# ── Session conditions (post-session amendment) ───────────────────────────────
+
+class ConditionsUpdate(BaseModel):
+    had_interruptions: str = "None"
+    interruption_notes: Optional[str] = None
 
 
 # ── Clinical findings ─────────────────────────────────────────────────────────

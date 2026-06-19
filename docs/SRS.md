@@ -346,6 +346,7 @@ The following requirements are derived from the risk analysis activities conduct
 | SRS-SAF-006 | The system shall not proceed to biomarker scoring if the speech recognition stage returns an empty or null transcript; it shall instead record an error state for that task. | M |
 | SRS-SAF-007 | Clinical flag severity levels (Note, Watch, Refer) shall be consistently and accurately applied according to the normative thresholds defined in the design specification. | M |
 | SRS-SAF-008 | The system shall record the assessment reference, patient reference, clinician identity, date and time, and all task results immutably in the database upon completion. | M |
+| SRS-SAF-009 | When a patient's date of birth or age band indicates the patient is under 18 years of age, the system shall display a modal warning stating that CogAssess is validated for adults aged 18 and over, that proceeding is outside the validated intended use and may constitute misuse, and providing the manufacturer contact address. The warning shall offer a primary "Go back" action and a secondary "Proceed anyway" acknowledgement. The system shall not advance to Step 2 unless the clinician has either cleared the under-18 entry or explicitly acknowledged the warning. | M |
 
 ---
 
@@ -463,6 +464,7 @@ The following matrix maps each functional requirement to its corresponding desig
 | SRS-SAF-001 | Clinician-only notice | CA-SAD §4.1 | TC-SAF-001 |
 | SRS-SAF-002 | No scores on patient screens | CA-SAD §4.1 | TC-SAF-002 |
 | SRS-SAF-006 | Empty transcript error state | CA-SAD §4.1 | TC-SAF-003 |
+| SRS-SAF-009 | Under-18 modal warning | CA-SAD §4.1 | TC-SAF-004 |
 | SRS-SEC-001 | bcrypt password hashing | CA-SAD §4.2 | TC-SEC-001 |
 | SRS-SEC-002 | JWT HS256 signing | CA-SAD §4.2 | TC-SEC-002, TC-OWA-003, TC-OWA-004, TC-OWA-005 |
 | SRS-SEC-003 | JWT validation on all protected endpoints — 401 if absent/malformed/expired | CA-SAD §4.2 | TC-OWA-010 |

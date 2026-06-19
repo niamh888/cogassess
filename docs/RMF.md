@@ -156,7 +156,8 @@ The following table presents the full hazard analysis for CogAssess v1.0. For ea
 | H-007 | Audio recording submitted to Google Cloud Platform contains patient-identifiable information in metadata or filename | Personally identifiable information (PII) transferred to a third party (GCP) without explicit consent or appropriate safeguards | Audio sent to GCP STT API includes patient name, PPS number, or other identifiers in request metadata or file naming | Developer error in API call construction; patient ID accidentally passed as a metadata parameter to the GCP Speech-to-Text API | 2 | 2 | 4 | (1) Audio submitted to GCP STT contains no patient_ref, patient name, or any identifying metadata; the API call is constructed with a generic session token only (SRS-SEC-006). (2) Pseudonymisation by design: the internal patient reference (CA-YYYY-NNNN) is not derived from or linked to real-world identifiers in the API call. (3) Code review checklist item specifically verifies GCP call construction before each release. | 2 | 1 | 2 | Acceptable | SRS-SEC-006 |
 | H-008 | Temporary audio file not deleted from the server filesystem after pipeline processing | Residual PII (voice recording) retained on server; privacy breach if server is accessed | Audio file persists on server filesystem after pipeline completes or after an error during processing | Exception thrown during pipeline processing causes the cleanup step to be bypassed; developer oversight in error handling | 2 | 2 | 4 | (1) Temporary audio file deletion is implemented in a `finally` block that executes regardless of whether the pipeline succeeds or raises an exception (SRS-SEC-005). (2) Automated test verifies that no temporary audio files remain after both successful and failed pipeline runs. (3) Server-side file retention audit included in operational security checklist. | 2 | 1 | 2 | Acceptable | SRS-SEC-005 |
 | H-009 | Speech biomarker scores for a non-English first-language (L1) speaker interpreted without language context | Inflated false-positive cognitive flags in non-English L1 speakers; inappropriate clinical pathway triggered | Clinician interprets reduced linguistic complexity or semantic coherence scores as indicative of cognitive impairment without accounting for L1 linguistic differences | The NLP and semantic scoring models (spaCy, sentence-transformers, HuggingFace emotion classifier) are English-language models; reduced scores may reflect language proficiency rather than cognitive impairment | 2 | 3 | 6 | (1) Patient L1 language field captured at intake as a required field (SRS-FUN-014). (2) An amber warning is automatically displayed on the clinician report whenever the recorded L1 language is not English, advising the clinician to exercise caution in score interpretation. (3) Clinician training materials explicitly address interpretation of scores for non-English L1 speakers. | 2 | 2 | 4 | Acceptable | SRS-FUN-014 |
-| H-010 | Noisy or acoustically suboptimal recording environment produces artefactually abnormal acoustic biomarker scores | Clinician misinterprets environmental noise artefact as a genuine acoustic feature of the patient's speech; inappropriate clinical concern raised | Assessment conducted in a noisy environment (e.g. open ward, busy clinic room); background noise degrades MFCC, pitch, and pause ratio calculations | Acoustic feature extraction (librosa) is sensitive to background noise; MFCC and pause detection algorithms may produce abnormal outputs in high-noise conditions | 2 | 3 | 6 | (1) Recording environment quality field captured at intake (quiet room, moderate background noise, noisy environment); this is displayed as a contextual confounding variable on the clinician report (SRS-FUN-015). (2) Clinician guidance recommends assessment in a quiet room with the door closed. (3) Environment field is a required intake field, ensuring clinicians actively consider recording conditions before proceeding. | 2 | 2 | 4 | Acceptable | SRS-FUN-015 |
+| H-010 | Noisy or acoustically suboptimal recording environment produces artefactually abnormal acoustic biomarker scores | Clinician misinterpretation of environmental noise artefact as a genuine acoustic feature of the patient's speech; inappropriate clinical concern raised | Assessment conducted in a noisy environment (e.g. open ward, busy clinic room); background noise degrades MFCC, pitch, and pause ratio calculations | Acoustic feature extraction (librosa) is sensitive to background noise; MFCC and pause detection algorithms may produce abnormal outputs in high-noise conditions | 2 | 3 | 6 | (1) Recording environment quality field captured at intake (quiet room, moderate background noise, noisy environment); this is displayed as a contextual confounding variable on the clinician report (SRS-FUN-015). (2) Clinician guidance recommends assessment in a quiet room with the door closed. (3) Environment field is a required intake field, ensuring clinicians actively consider recording conditions before proceeding. | 2 | 2 | 4 | Acceptable | SRS-FUN-015 |
+| H-011 | CogAssess used to assess a patient under 18 years of age — outside the validated intended population | Unreliable or clinically misleading biomarker scores for a paediatric patient; misinterpretation of results in an age group for which the system has not been validated | Clinician administers CogAssess to a patient whose age is below 18, recording scores that have no validated normative reference for the paediatric population | Clinician error; researcher curiosity; patient age incorrectly estimated; deliberate off-label use | 3 | 2 | 6 | (1) System detects under-18 age at point of intake from date of birth or age band selection and displays a mandatory modal warning stating the software is validated for adults aged 18+ only, that proceeding is outside intended use and may constitute misuse, and providing the manufacturer contact address (SRS-SAF-009). (2) Modal requires explicit acknowledgement before proceeding — the primary action is "Go back"; proceeding requires a separate deliberate action. (3) Manufacturer contact (info@memorytell.com) is displayed in the warning to enable reporting. | 3 | 1 | 3 | Acceptable | SRS-SAF-009 |
 
 ---
 
@@ -164,7 +165,7 @@ The following table presents the full hazard analysis for CogAssess v1.0. For ea
 
 ### 7.1 Residual Risk Summary
 
-The following table summarises the residual RPN for all ten identified hazards after the application of risk control measures.
+The following table summarises the residual RPN for all eleven identified hazards after the application of risk control measures.
 
 | Hazard ID | Description (summary) | Residual RPN | Category |
 |---|---|---|---|
@@ -178,6 +179,7 @@ The following table summarises the residual RPN for all ten identified hazards a
 | H-008 | Temporary audio file not deleted | 2 | Acceptable |
 | H-009 | Non-English L1 speaker scores misinterpreted | 4 | Acceptable |
 | H-010 | Noisy environment degrades acoustic scores | 4 | Acceptable |
+| H-011 | Use with patient under 18 — outside validated population | 3 | Acceptable |
 
 ### 7.2 Residual Risk Acceptability Justification
 
@@ -231,13 +233,13 @@ The clinical benefit of CogAssess — earlier and more reproducible identificati
 | Version | 1.0 |
 | IEC 62304 Class | Class B |
 | Risk Management Standard | ISO 14971:2019 |
-| Total hazards identified | 10 (H-001 to H-010) |
+| Total hazards identified | 11 (H-001 to H-011) |
 | Hazards with unacceptable initial RPN (>8) | 2 (H-001 RPN=12, H-003 RPN=9) |
-| Hazards with initial RPN 4–8 (Acceptable — justification required) | 6 (H-002, H-005, H-006, H-007, H-009, H-010) |
+| Hazards with initial RPN 4–8 (Acceptable — justification required) | 7 (H-002, H-005, H-006, H-007, H-009, H-010, H-011) |
 | Hazards with acceptable initial RPN (<4) | 2 (H-004, H-008) |
 | Residual hazards in Unacceptable zone | 0 |
 | Residual hazards with RPN 4–8 (Acceptable, justified) | 3 (H-001, H-009, H-010) |
-| Residual hazards in Acceptable zone | 7 |
+| Residual hazards in Acceptable zone | 8 |
 | Maximum residual RPN | 6 (H-001) |
 | Residual risk acceptability justification documented | Yes — Section 7.2 |
 | Benefit-risk determination | Positive — Section 8.3 |

@@ -402,14 +402,14 @@ Submits the WAV file to the Google Cloud Speech-to-Text V2 API using the Chirp u
 
 Extracts the following measures from the raw audio waveform:
 
-| Measure | Description |
-|---------|-------------|
-| `pause_count` | Number of inter-word silences exceeding 250ms threshold |
-| `pauses_per_minute` | Normalised pause frequency |
-| `articulation_rate_syl_per_sec` | Estimated syllables per second during voiced segments |
-| `hnr_db` | Harmonics-to-noise ratio in dB (voice quality indicator) |
-| `mean_f0_hz` | Mean fundamental frequency (pitch) in Hz |
-| `speech_rate_wpm` | Estimated words per minute |
+| Measure | Description | Clinical significance |
+|---------|-------------|----------------------|
+| `pause_count` | Number of inter-word silences exceeding 300 ms | Elevated pause frequency is associated with word-finding difficulty and increased cognitive processing demand in MCI |
+| `pauses_per_minute` | Normalised pause frequency | Normalises pause count to recording duration; enables comparison across tasks of different lengths |
+| `articulation_rate_syl_per_sec` | Estimated syllables per second during voiced segments (pauses excluded) | Reduced rate is a marker of motor speech disorders (Parkinson's disease, dysarthria) and cognitive slowing |
+| `hnr_db` | Harmonics-to-noise ratio — ratio of periodic to aperiodic energy in the signal (dB) | Reduced HNR indicates vocal roughness or breathiness; associated with laryngeal involvement in Parkinson's disease |
+| `mean_f0_hz` | Mean fundamental frequency (pitch) in Hz | Reduced pitch variability is associated with Parkinson's disease and depression; abnormal mean F0 may indicate neurological or laryngeal involvement |
+| `speech_rate_wpm` | Estimated words per minute including pauses | Reduced overall speech rate reflects the combined effect of articulation slowing and increased pausing |
 
 #### 4.4.5 SI-04d: Linguistic Analyser
 
@@ -421,16 +421,16 @@ Extracts the following measures from the raw audio waveform:
 
 Extracts the following measures using spaCy morphological and dependency parse:
 
-| Measure | Description |
-|---------|-------------|
-| `word_count` | Total word count of transcript |
-| `unique_words` | Count of unique word types |
-| `type_token_ratio` | Lexical diversity (unique / total words) |
-| `hesitation_count` | Count of disfluency markers: uh, um, er |
-| `hesitations_per_minute` | Normalised hesitation frequency |
-| `first_person_ratio` | Proportion of first-person pronoun usage |
-| `mean_sentence_length` | Mean words per sentence |
-| `pronoun_count` | Total pronoun usage |
+| Measure | Description | Clinical significance |
+|---------|-------------|----------------------|
+| `word_count` | Total word count of transcript | Reduced output on open-ended tasks indicates diminished generative capacity; sensitive to MCI and executive dysfunction |
+| `unique_words` | Count of unique word types produced | Directly reflects vocabulary breadth; reduced unique word count is associated with semantic memory decline |
+| `type_token_ratio` | Lexical diversity: unique word types / total words | Reduced TTR is one of the most replicated speech biomarkers in MCI and early Alzheimer's disease (Petti et al., 2020) |
+| `hesitation_count` | Count of filled pauses: uh, um, er | Elevated disfluency reflects anomia and increased cognitive processing load; > 3–4 per structured task is clinically notable |
+| `hesitations_per_minute` | Normalised hesitation frequency | Normalises disfluency count to recording duration for cross-task comparison |
+| `first_person_ratio` | Proportion of first-person pronouns (I, me, my) among all person references | Reduced self-referential language in personal narrative tasks is associated with episodic memory decline |
+| `mean_sentence_length` | Mean words per sentence | Reduced syntactic complexity (shorter sentences) is associated with language impairment in MCI and aphasia |
+| `pronoun_count` | Total pronoun usage | Elevated pronoun-to-noun ratio (pronoun substitution for specific nouns) is a recognised anomia marker in early dementia |
 
 #### 4.4.6 SI-04e: Semantic Scorer
 

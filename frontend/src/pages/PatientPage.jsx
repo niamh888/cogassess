@@ -17,6 +17,13 @@ export default function PatientPage() {
   const [timeLeft,  setTimeLeft]  = useState(0);
   const [errorMsg,  setErrorMsg]  = useState(null);
 
+  // Skip panel
+  const [showSkipPanel, setShowSkipPanel] = useState(false);
+  const [skipReason,    setSkipReason]    = useState("Demo / Testing");
+  const [skipNotes,     setSkipNotes]     = useState("");
+
+  const SKIP_REASONS = ["Demo / Testing", "Patient fatigue", "Patient declined", "Technical issue", "Clinician decision", "Other"];
+
   const mediaRecorderRef = useRef(null);
   const chunksRef        = useRef([]);
   const timerRef         = useRef(null);
@@ -92,6 +99,28 @@ export default function PatientPage() {
     setPhase("processing");
   }
 
+  async function handleSkip() {
+    setPhase("processing");
+    setShowSkipPanel(false);
+    try {
+      const params = new URLSearchParams({ task_id: task.id, skip_reason: skipReason, skip_notes: skipNotes });
+      const res = await fetch(`${API}/assessments/${key}/tasks/${taskIdx}/skip?${params}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Skip failed (${res.status})`);
+      setSkipNotes("");
+      if (taskIdx + 1 >= selectedTasks.length) {
+        setPhase("done");
+      } else {
+        setTaskIdx(i => i + 1);
+      }
+    } catch (e) {
+      setErrorMsg(e.message);
+      setPhase("error");
+    }
+  }
+
   async function submitRecording(blob) {
     try {
       const fd = new FormData();
@@ -153,6 +182,53 @@ export default function PatientPage() {
             >
               Patient is ready — start recording →
             </button>
+
+            {/* Skip from clinician prep screen */}
+            {!showSkipPanel ? (
+              <div style={{ marginTop: 12, textAlign: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSkipPanel(true)}
+                  style={{ fontSize: 12, color: "#854f0b", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", textDecoration: "underline" }}
+                >
+                  Clinician: skip this task
+                </button>
+              </div>
+            ) : (
+              <div style={{ marginTop: 14, background: "rgba(255,255,255,0.6)", border: "0.5px solid #f5d08a", borderRadius: "var(--border-radius-md)", padding: "14px", textAlign: "left" }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#854f0b", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 10px" }}>Skip reason</p>
+                <select
+                  value={skipReason}
+                  onChange={e => setSkipReason(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "0.5px solid #f5d08a", borderRadius: "var(--border-radius-md)", background: "#fff", fontFamily: "var(--font-sans)", marginBottom: 10 }}
+                >
+                  {SKIP_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Optional note…"
+                  value={skipNotes}
+                  onChange={e => setSkipNotes(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "0.5px solid #f5d08a", borderRadius: "var(--border-radius-md)", background: "#fff", fontFamily: "var(--font-sans)", marginBottom: 10, boxSizing: "border-box" }}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    style={{ flex: 1, padding: "9px 16px", background: "#faeeda", color: "#854f0b", border: "0.5px solid #f5d08a", borderRadius: "var(--border-radius-md)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}
+                  >
+                    Confirm skip →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSkipPanel(false)}
+                    style={{ padding: "9px 16px", background: "transparent", border: "0.5px solid #f5d08a", borderRadius: "var(--border-radius-md)", fontSize: 13, color: "#854f0b", cursor: "pointer", fontFamily: "var(--font-sans)" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -228,10 +304,59 @@ export default function PatientPage() {
 
           {/* Ready */}
           {phase === "ready" && (
-            <button onClick={startRecording} style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "16px 36px", background: "var(--color-accent)", color: "#fff", border: "none", borderRadius: 100, fontSize: 17, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", marginTop: task.stimulus ? 0 : 16 }}>
-              <i className="ti ti-microphone" aria-hidden="true" />
-              Start speaking
-            </button>
+            <div>
+              <button onClick={startRecording} style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "16px 36px", background: "var(--color-accent)", color: "#fff", border: "none", borderRadius: 100, fontSize: 17, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", marginTop: task.stimulus ? 0 : 16 }}>
+                <i className="ti ti-microphone" aria-hidden="true" />
+                Start speaking
+              </button>
+
+              {/* Skip panel */}
+              {!showSkipPanel ? (
+                <div style={{ marginTop: 20 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowSkipPanel(true)}
+                    style={{ fontSize: 12, color: "var(--color-text-tertiary)", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", textDecoration: "underline" }}
+                  >
+                    Clinician: skip this task
+                  </button>
+                </div>
+              ) : (
+                <div style={{ marginTop: 20, background: "var(--color-background-secondary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", padding: "16px", textAlign: "left" }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>Clinician — skip reason</p>
+                  <select
+                    value={skipReason}
+                    onChange={e => setSkipReason(e.target.value)}
+                    style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", background: "var(--color-surface)", fontFamily: "var(--font-sans)", marginBottom: 10 }}
+                  >
+                    {SKIP_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Optional note…"
+                    value={skipNotes}
+                    onChange={e => setSkipNotes(e.target.value)}
+                    style={{ width: "100%", padding: "8px 10px", fontSize: 13, border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", background: "var(--color-surface)", fontFamily: "var(--font-sans)", marginBottom: 12, boxSizing: "border-box" }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleSkip}
+                      style={{ flex: 1, padding: "9px 16px", background: "var(--color-background-warning)", color: "var(--color-text-warning)", border: "0.5px solid var(--color-border-warning)", borderRadius: "var(--border-radius-md)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}
+                    >
+                      Confirm skip →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSkipPanel(false)}
+                      style={{ padding: "9px 16px", background: "transparent", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-sans)" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Recording */}

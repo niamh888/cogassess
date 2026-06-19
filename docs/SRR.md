@@ -153,7 +153,7 @@ The following table records the verification and validation status of each requi
 | Requirements traceability matrix | Complete | CA-RTM-001 |
 | Validation plan defined (IEC 82304-1 §6) | Complete | CA-VP-001 |
 | Validation report template (IEC 82304-1 §6) | Partially complete | CA-VR-001 — sections to be completed at FPI |
-| Automated test suite (43 SVP test cases) | 42 passing / 14 skipped | Test log TR-20260606-113847 |
+| Automated test suite (44 SVP test cases) | 42 passing / 14 skipped | Test log TR-20260606-113847 |
 | API-layer penetration test (OWASP Top 10) | **Complete — all 10 PASS** | CA-SEC-001 §10.2, CA-VR-001 §3.1 |
 | Bandit static analysis | **Complete — 0 actionable findings** | CA-SEC-001 §10.1, CA-VR-001 §3.3 |
 | System-level browser/GCP tests | Not yet | To be executed before FPI per CA-VP-001 VA-001 |

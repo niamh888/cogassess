@@ -666,12 +666,29 @@ def create_patient(
     db: Session = Depends(get_db),
     _: models.Clinician = Depends(get_current_clinician),
 ):
-    if db.query(models.Patient).filter(models.Patient.patient_ref == data.patient_ref).first():
-        raise HTTPException(400, "Patient reference already exists — choose a unique ID")
-    patient = models.Patient(**data.model_dump())
-    db.add(patient)
-    db.commit()
-    db.refresh(patient)
+    if data.patient_ref:
+        # Manual ref provided — check uniqueness
+        if db.query(models.Patient).filter(models.Patient.patient_ref == data.patient_ref).first():
+            raise HTTPException(400, "Patient reference already exists — choose a unique ID")
+        patient = models.Patient(**data.model_dump())
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+    else:
+        # Auto-generate ref using patient ID (same pattern as assessment_ref)
+        patient = models.Patient(
+            patient_ref="__pending__",
+            date_of_birth=data.date_of_birth,
+            age_band=data.age_band,
+            language=data.language,
+            l1_language=data.l1_language,
+        )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
+        patient.patient_ref = f"PT-{patient.created_at.year}-{patient.id:04d}"
+        db.commit()
+        db.refresh(patient)
     return patient
 
 
@@ -915,6 +932,79 @@ async def submit_task(
         }
     finally:
         os.unlink(tmp_path)
+
+
+# ── Task skip ─────────────────────────────────────────────────────────────────
+
+@app.post("/assessments/{assessment_key}/tasks/{task_index}/skip")
+def skip_task(
+    assessment_key: str,
+    task_index: int,
+    task_id: str,
+    skip_reason: str,
+    skip_notes: str = "",
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    assessment = db.query(models.Assessment).filter(
+        models.Assessment.assessment_key == assessment_key
+    ).first()
+    if not assessment:
+        raise HTTPException(404, "Assessment not found")
+
+    skip_data = json.dumps({"skipped": True, "skip_reason": skip_reason, "skip_notes": skip_notes})
+
+    existing = db.query(models.TaskResult).filter(
+        models.TaskResult.assessment_id == assessment.id,
+        models.TaskResult.task_index    == task_index,
+    ).first()
+    if existing:
+        existing.task_id   = task_id
+        existing.transcript = None
+        existing.scores    = skip_data
+        existing.pipeline  = None
+        existing.report    = skip_data
+    else:
+        db.add(models.TaskResult(
+            assessment_id = assessment.id,
+            task_index    = task_index,
+            task_id       = task_id,
+            transcript    = None,
+            scores        = skip_data,
+            pipeline      = None,
+            report        = skip_data,
+        ))
+
+    db.flush()
+    total_selected = len(json.loads(assessment.selected_tasks or '["routine","fluency","memory"]'))
+    if db.query(models.TaskResult).filter(
+        models.TaskResult.assessment_id == assessment.id
+    ).count() >= total_selected:
+        assessment.status = "complete"
+
+    db.commit()
+    return {"skipped": True, "task_index": task_index, "skip_reason": skip_reason}
+
+
+# ── Session conditions (post-session amendment) ───────────────────────────────
+
+@app.put("/assessments/{assessment_key}/conditions")
+def update_conditions(
+    assessment_key: str,
+    data: schemas.ConditionsUpdate,
+    db: Session = Depends(get_db),
+    clinician: models.Clinician = Depends(get_current_clinician),
+):
+    a = db.query(models.Assessment).filter(
+        models.Assessment.assessment_key == assessment_key,
+        models.Assessment.clinician_id == clinician.id,
+    ).first()
+    if not a:
+        raise HTTPException(404, "Assessment not found")
+    a.had_interruptions = data.had_interruptions
+    a.interruption_notes = data.interruption_notes
+    db.commit()
+    return {"status": "ok"}
 
 
 # ── Clinical findings ─────────────────────────────────────────────────────────

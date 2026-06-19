@@ -132,6 +132,14 @@ The transcript forms the input to all subsequent analysis stages. If the transcr
 
 All acoustic features are computed deterministically from the audio waveform using established signal processing techniques. Given identical input audio, output is identical on every run.
 
+| Feature | What it measures | Clinical significance |
+|---|---|---|
+| Articulation rate (syl/s) | Rate of syllable production during voiced segments, with pauses excluded | Reduced articulation rate is associated with motor speech disorders (Parkinson's disease, dysarthria) and cognitive slowing |
+| Pause count | Number of silent intervals ≥ 300 ms | Increased pause frequency is a consistent marker of word-finding difficulty and elevated cognitive processing demand in MCI populations |
+| Mean pause duration (ms) | Average duration of inter-word or inter-phrase silences | Longer pauses suggest difficulty completing lexical retrieval; elevated mean pause duration is associated with anomia and dementia |
+| Pitch mean / SD (Hz) | Mean and standard deviation of fundamental frequency (F0) | Reduced pitch variability (monotone speech) is associated with Parkinson's disease and depression; abnormal mean F0 may indicate laryngeal or neurological involvement |
+| Harmonic-to-noise ratio (HNR, dB) | Ratio of periodic (voiced) energy to aperiodic (noise) energy in the signal | Reduced HNR indicates vocal roughness or breathiness — a recognised marker of motor involvement in Parkinson's disease and related disorders |
+
 #### Stage 3 — Morphological and Linguistic Analysis (spaCy)
 
 | Attribute | Detail |
@@ -142,6 +150,14 @@ All acoustic features are computed deterministically from the audio waveform usi
 | Output | Noun/verb ratio, first/third person pronoun ratio, type-token ratio, disfluency count, word count, unique word count |
 
 Morphological features are extracted from the transcript using part-of-speech tagging and pattern matching. The en_core_web_sm model weights are fixed at the evaluated version.
+
+| Feature | What it measures | Clinical significance |
+|---|---|---|
+| Type-token ratio (TTR) | Proportion of unique word types to total words — a measure of lexical diversity | Reduced TTR is one of the most replicated speech biomarkers in MCI and early Alzheimer's disease, reflecting limited access to the semantic lexicon (Petti et al., 2020) |
+| Disfluency count | Frequency of filled pauses: "uh", "um", "er" | Elevated disfluency is associated with anomia (word-finding failure) and increased cognitive processing load; counts above 3–4 per structured task are clinically notable |
+| First-person ratio | Proportion of first-person pronouns (I, me, my) relative to all person references | Reduced self-referential language in personal narrative tasks has been reported as an early indicator of episodic memory decline |
+| Noun/verb ratio | Balance between noun and verb use among content words | Shifts toward noun-heavy speech can reflect reduced dynamic linguistic processing; altered ratios are seen in aphasia and MCI |
+| Word count / unique words | Total output length and vocabulary breadth in response to the task | Shorter and less varied responses on open-ended tasks are associated with reduced generative capacity, a feature of MCI and executive dysfunction |
 
 #### Stage 4 — Semantic Analysis (sentence-transformers)
 
@@ -154,6 +170,13 @@ Morphological features are extracted from the transcript using part-of-speech ta
 
 The all-mpnet-base-v2 model encodes sentences as dense vectors. Semantic variability is computed as variance in pairwise cosine similarity across sentence embeddings. This stage is sensitive to lexical richness and thematic consistency of speech, known correlates of semantic memory function.
 
+| Feature | What it measures | Clinical significance |
+|---|---|---|
+| Semantic variability | Variance in cosine similarity between successive sentence embeddings | High variability indicates topic drift or incoherent transitions — a marker of semantic memory disorganisation in MCI and Alzheimer's disease (Fraser et al., 2016) |
+| Topic coherence | Mean cosine similarity between successive sentences (inverse of variability) | Low coherence reflects difficulty maintaining a consistent theme; associated with disorganised or tangential speech in dementia and TBI |
+| High-frequency word ratio | Proportion of common generic words (e.g. "the", "it", "and") in the transcript | Over-reliance on high-frequency filler words at the expense of specific content words indicates reduced access to the semantic lexicon |
+| Semantic granularity score | Inverse of the high-frequency word ratio — a proxy for lexical specificity | Higher granularity reflects richer, more specific vocabulary; reduced granularity is associated with semantic memory impairment |
+
 #### Stage 5 — Emotion Classification (j-hartmann/emotion-english-distilroberta-base)
 
 | Attribute | Detail |
@@ -164,6 +187,13 @@ The all-mpnet-base-v2 model encodes sentences as dense vectors. Semantic variabi
 | Output | Probability distribution across 7 emotion classes (joy, sadness, anger, fear, disgust, surprise, neutral); dominant emotion; valence |
 
 This model is a fine-tuned DistilRoBERTa classifier trained on a large corpus of English text with emotion labels. It classifies the emotional tone of the transcript. Emotional processing changes, including affective flattening and reduced emotional range, have been reported in MCI and early dementia populations (Kessels et al., 2014).
+
+| Feature | What it measures | Clinical significance |
+|---|---|---|
+| Dominant emotion | The highest-probability emotion class from the 7-class distribution | Persistent negative dominant emotion (sadness, fear) may indicate depression or anxiety; persistent neutral may indicate emotional blunting |
+| Neutral probability | Probability score assigned to the "neutral" class | Elevated neutral score (> 50%) indicates reduced emotional expressivity — associated with affective flattening in depression, apathy, and some neurodegenerative conditions |
+| Valence | Positive / neutral / negative classification derived from dominant emotion | Reduced positive valence in a personal memory recall task is a sensitive indicator of anhedonia and affective flattening |
+| Emotional range | Breadth of emotion class probabilities (non-neutral emotion mass) | Near-zero probability across all non-neutral classes indicates flattened affect, reported in early Alzheimer's disease and frontotemporal dementia |
 
 ### 3.4 Scoring
 

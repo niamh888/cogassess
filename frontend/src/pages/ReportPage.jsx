@@ -148,6 +148,34 @@ function FlagCard({ flag }) {
 // ── Task panel ─────────────────────────────────────────────────────────────
 function TaskPanel({ taskResult, taskDef }) {
   const { scores, report } = taskResult;
+
+  // Skipped task — show a simple notice instead of scores
+  if (scores?.skipped) {
+    return (
+      <div style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-secondary)", padding: "1.5rem", opacity: 0.75 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <p style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--color-text-tertiary)", margin: "0 0 3px", textTransform: "uppercase" }}>
+              Task {taskResult.task_index + 1}
+            </p>
+            <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: "var(--color-text-primary)" }}>
+              {taskDef?.title ?? taskResult.task_id}
+            </h3>
+            <p style={{ fontSize: 12, color: "var(--color-text-tertiary)", margin: "3px 0 0" }}>{taskDef?.domain}</p>
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#854f0b", background: "#faeeda", border: "0.5px solid #f5d08a", padding: "3px 10px", borderRadius: 100, letterSpacing: "0.05em" }}>
+            Skipped
+          </span>
+        </div>
+        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
+          <strong>Reason:</strong> {scores.skip_reason}
+          {scores.skip_notes ? ` — ${scores.skip_notes}` : ""}
+        </p>
+        <p style={{ fontSize: 12, color: "var(--color-text-tertiary)", margin: "6px 0 0" }}>No biomarker scores were generated for this task.</p>
+      </div>
+    );
+  }
+
   const composite = report?.composite_score ?? scores?.composite ?? 0;
   const riskLevel = composite >= 70 ? "Low risk" : composite >= 45 ? "Moderate" : "Elevated";
   const riskColor = composite >= 70 ? "#0f6e56" : composite >= 45 ? "#854f0b" : "#c62828";
@@ -195,14 +223,24 @@ function TaskPanel({ taskResult, taskDef }) {
 // ── Cumulative panel ───────────────────────────────────────────────────────
 function CumulativePanel({ taskResults }) {
   const domains = ["motor_speech", "semantic_memory", "episodic_memory", "emotional_processing"];
+  const scoredResults = taskResults.filter(t => !t.scores?.skipped);
+
+  if (scoredResults.length === 0) {
+    return (
+      <div style={{ background: "var(--color-surface)", borderRadius: "var(--border-radius-lg)", border: "0.5px solid var(--color-border-secondary)", padding: "1.5rem", opacity: 0.75 }}>
+        <p style={{ fontSize: 11, letterSpacing: "0.1em", color: "var(--color-text-tertiary)", margin: "0 0 6px", textTransform: "uppercase" }}>Session summary</p>
+        <p style={{ fontSize: 14, color: "var(--color-text-secondary)", margin: 0 }}>No scored tasks — all tasks were skipped. No cumulative score available.</p>
+      </div>
+    );
+  }
 
   const avg = {};
   domains.forEach(d => {
-    const vals = taskResults.map(t => t.scores?.[d]).filter(v => v != null);
+    const vals = scoredResults.map(t => t.scores?.[d]).filter(v => v != null);
     avg[d] = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
   });
 
-  const compositeVals = taskResults.map(t => t.report?.composite_score ?? t.scores?.composite ?? 0);
+  const compositeVals = scoredResults.map(t => t.report?.composite_score ?? t.scores?.composite ?? 0);
   const composite = compositeVals.length ? Math.round(compositeVals.reduce((a, b) => a + b, 0) / compositeVals.length) : 0;
 
   const riskLevel = composite >= 70 ? "Low risk" : composite >= 45 ? "Moderate" : "Elevated";
@@ -212,7 +250,7 @@ function CumulativePanel({ taskResults }) {
   // Deduplicated flags (highest severity wins)
   const SEV_RANK = { refer: 2, watch: 1, note: 0 };
   const flagMap  = {};
-  taskResults.forEach(t => {
+  scoredResults.forEach(t => {
     (t.report?.flags ?? []).forEach(f => {
       const flag = typeof f === "string" ? { label: f, severity: "note" } : f;
       const key  = flag.label;
@@ -234,7 +272,7 @@ function CumulativePanel({ taskResults }) {
             Cumulative score
           </h3>
           <p style={{ fontSize: 12, color: "var(--color-text-tertiary)", margin: "3px 0 0" }}>
-            Average across {taskResults.length} task{taskResults.length > 1 ? "s" : ""}
+            Average across {scoredResults.length} scored task{scoredResults.length > 1 ? "s" : ""}{scoredResults.length < taskResults.length ? ` (${taskResults.length - scoredResults.length} skipped)` : ""}
           </p>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -264,13 +302,16 @@ function CumulativePanel({ taskResults }) {
 // ── Population comparison section (full-width, below the 4-panel grid) ────
 function PopulationSection({ taskResults }) {
   const domains = ["motor_speech", "semantic_memory", "episodic_memory", "emotional_processing"];
+  const scoredResults = taskResults.filter(t => !t.scores?.skipped);
   const avg = {};
   domains.forEach(d => {
-    const vals = taskResults.map(t => t.scores?.[d]).filter(v => v != null);
+    const vals = scoredResults.map(t => t.scores?.[d]).filter(v => v != null);
     avg[d] = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
   });
 
-  const compositeVals = taskResults.map(t => t.report?.composite_score ?? t.scores?.composite ?? 0);
+  if (scoredResults.length === 0) return null;
+
+  const compositeVals = scoredResults.map(t => t.report?.composite_score ?? t.scores?.composite ?? 0);
   const composite = compositeVals.length ? Math.round(compositeVals.reduce((a, b) => a + b, 0) / compositeVals.length) : 0;
 
   // Wide bell curve
@@ -392,19 +433,44 @@ export default function ReportPage() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
 
+  // Session conditions — editable post-session
+  const [hadInterruptions,  setHadInterruptions]  = useState("None");
+  const [interruptionNotes, setInterruptionNotes] = useState("");
+  const [conditionsSaving,  setConditionsSaving]  = useState(false);
+  const [conditionsSaved,   setConditionsSaved]   = useState(false);
+
   useEffect(() => {
     fetch(`${API}/assessments/${key}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(setAssessment)
+      .then(data => {
+        setAssessment(data);
+        setHadInterruptions(data.had_interruptions || "None");
+        setInterruptionNotes(data.interruption_notes || "");
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [key, token]);
+
+  async function saveConditions() {
+    setConditionsSaving(true);
+    setConditionsSaved(false);
+    try {
+      await fetch(`${API}/assessments/${key}/conditions`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ had_interruptions: hadInterruptions, interruption_notes: interruptionNotes || null }),
+      });
+      setConditionsSaved(true);
+    } finally {
+      setConditionsSaving(false);
+    }
+  }
 
   if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "var(--color-text-secondary)" }}>Loading report…</div>;
   if (error)   return <div style={{ padding: "3rem", textAlign: "center", color: "var(--color-text-danger)" }}>Could not load report: {error}</div>;
   if (!assessment) return null;
 
-  const { patient, task_results, clinician_name, date_of_assessment, assessment_type, referral_source, reason, notes, assessment_ref, environment, had_interruptions, interruption_notes, l1_language, clinical_outcome, findings_recorded_at } = assessment;
+  const { patient, task_results, clinician_name, date_of_assessment, assessment_type, referral_source, reason, notes, assessment_ref, environment, l1_language, clinical_outcome, findings_recorded_at } = assessment;
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1rem" }}>
@@ -454,13 +520,15 @@ export default function ReportPage() {
       {(() => {
         const nonEnglishL1 = l1_language && l1_language.trim().toLowerCase() !== "english";
         const noisyEnv     = environment && !environment.toLowerCase().startsWith("quiet clinical");
-        const interrupted  = had_interruptions && had_interruptions !== "None";
+        const interrupted  = hadInterruptions && hadInterruptions !== "None";
         const hasFlags     = nonEnglishL1 || noisyEnv || interrupted;
         return (
-          <div style={{ background: "var(--color-surface)", border: "0.5px solid var(--color-border-primary)", borderRadius: "var(--border-radius-md)", padding: "14px 18px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "var(--color-text-tertiary)", textTransform: "uppercase", margin: "0 0 8px" }}>Session conditions</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ background: "var(--color-surface)", border: "0.5px solid var(--color-border-primary)", borderRadius: "var(--border-radius-md)", padding: "14px 18px", marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "var(--color-text-tertiary)", textTransform: "uppercase", margin: "0 0 10px" }}>Session conditions</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
+
+              {/* Static fields */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
                 <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
                   <strong>L1:</strong> {l1_language || "English"}
                 </span>
@@ -468,32 +536,61 @@ export default function ReportPage() {
                 <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
                   <strong>Environment:</strong> {environment || "Not recorded"}
                 </span>
-                <span style={{ color: "var(--color-border-secondary)" }}>·</span>
-                <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
-                  <strong>Interruptions:</strong> {had_interruptions || "None"}
-                  {interruption_notes && ` — ${interruption_notes}`}
-                </span>
               </div>
+
+              {/* Editable interruptions */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>Interruptions:</label>
+                  <select
+                    value={hadInterruptions}
+                    onChange={e => { setHadInterruptions(e.target.value); setConditionsSaved(false); }}
+                    style={{ fontSize: 12, padding: "3px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", background: "var(--color-surface)", fontFamily: "var(--font-sans)", cursor: "pointer" }}
+                  >
+                    <option value="None">None</option>
+                    <option value="Minor — brief, minimal impact">Minor — brief, minimal impact</option>
+                    <option value="Significant — may have affected responses">Significant — may have affected responses</option>
+                  </select>
+                  <button
+                    onClick={saveConditions}
+                    disabled={conditionsSaving}
+                    style={{ fontSize: 12, padding: "3px 12px", borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--color-border-secondary)", background: conditionsSaved ? "#e1f5ee" : "var(--color-surface)", color: conditionsSaved ? "#0f6e56" : "var(--color-text-secondary)", cursor: conditionsSaving ? "not-allowed" : "pointer", fontFamily: "var(--font-sans)", fontWeight: conditionsSaved ? 600 : 400 }}
+                  >
+                    {conditionsSaving ? "Saving…" : conditionsSaved ? "✓ Confirmed" : "Confirm"}
+                  </button>
+                </div>
+                {hadInterruptions !== "None" && (
+                  <input
+                    type="text"
+                    value={interruptionNotes}
+                    onChange={e => { setInterruptionNotes(e.target.value); setConditionsSaved(false); }}
+                    placeholder="Brief description of what happened…"
+                    style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", background: "var(--color-surface)", fontFamily: "var(--font-sans)", width: 280 }}
+                  />
+                )}
+              </div>
+
+              {/* Condition warnings */}
+              {hasFlags && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginLeft: "auto" }}>
+                  {nonEnglishL1 && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#854f0b", background: "#faeeda", border: "0.5px solid #f5d08a", borderRadius: 4, padding: "2px 8px" }}>
+                      Non-English L1 — fluency scores may be affected
+                    </span>
+                  )}
+                  {noisyEnv && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#854f0b", background: "#faeeda", border: "0.5px solid #f5d08a", borderRadius: 4, padding: "2px 8px" }}>
+                      Suboptimal environment — acoustic scores may be affected
+                    </span>
+                  )}
+                  {interrupted && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#c62828", background: "#fdeaea", border: "0.5px solid #f5a0a0", borderRadius: 4, padding: "2px 8px" }}>
+                      Interruptions recorded — results should be interpreted with caution
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-            {hasFlags && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {nonEnglishL1 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#854f0b", background: "#faeeda", border: "0.5px solid #f5d08a", borderRadius: 4, padding: "2px 8px" }}>
-                    Non-English L1 — fluency scores may be affected
-                  </span>
-                )}
-                {noisyEnv && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#854f0b", background: "#faeeda", border: "0.5px solid #f5d08a", borderRadius: 4, padding: "2px 8px" }}>
-                    Suboptimal environment — acoustic scores may be affected
-                  </span>
-                )}
-                {interrupted && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#c62828", background: "#fdeaea", border: "0.5px solid #f5a0a0", borderRadius: 4, padding: "2px 8px" }}>
-                    Interruptions recorded — results should be interpreted with caution
-                  </span>
-                )}
-              </div>
-            )}
           </div>
         );
       })()}
@@ -540,8 +637,10 @@ export default function ReportPage() {
                   <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-tertiary)", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                     Task {tr.task_index + 1} — {TASKS.find(t => t.id === tr.task_id)?.title ?? tr.task_id}
                   </p>
-                  <p style={{ fontSize: 14, color: "var(--color-text-secondary)", margin: 0, lineHeight: 1.7, fontStyle: tr.transcript ? "normal" : "italic" }}>
-                    {tr.transcript || "No transcript available"}
+                  <p style={{ fontSize: 14, color: "var(--color-text-secondary)", margin: 0, lineHeight: 1.7, fontStyle: "italic" }}>
+                    {tr.scores?.skipped
+                      ? `Skipped — ${tr.scores.skip_reason}${tr.scores.skip_notes ? `: ${tr.scores.skip_notes}` : ""}`
+                      : tr.transcript || "No transcript available"}
                   </p>
                 </div>
               ))}

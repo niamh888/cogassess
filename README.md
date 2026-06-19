@@ -202,7 +202,7 @@ Expected response:
 
 ## Automated testing
 
-The test suite covers 43 test cases mapped to [CA-SVP-001](docs/SVP.md). No GCP account, no ML models, and no running server are required — all heavy dependencies are stubbed at runtime.
+The test suite covers 44 test cases mapped to [CA-SVP-001](docs/SVP.md). No GCP account, no ML models, and no running server are required — all heavy dependencies are stubbed at runtime.
 
 ### First-time setup (test dependencies only)
 
@@ -363,7 +363,7 @@ A full IEC 62304 Class B / IEC 82304-1 software lifecycle document suite is in `
 | Software Requirements Specification | CA-SRS-001 | ~110 functional, safety, security, and performance requirements |
 | Software Architecture Description | CA-SAD-001 | 5 software items, pipeline architecture, security architecture |
 | Software Development Plan | CA-SDP-001 | Lifecycle model, roles, tools, coding standards, release criteria |
-| Software Verification Plan | CA-SVP-001 | 43 test cases across 11 requirement groups |
+| Software Verification Plan | CA-SVP-001 | 44 test cases across 11 requirement groups |
 | Risk Management File | CA-RMF-001 | ISO 14971 hazard analysis — 10 hazards, all residual risks acceptable |
 | SOUP Evaluation Records | CA-SOUP-001 | 14 third-party components evaluated including CVE review |
 | Software Release Record | CA-SRR-001 | v0.5.0-beta release baseline, known limitations, SDLC checklist |
