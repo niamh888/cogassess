@@ -37,7 +37,7 @@ export default function Header() {
           aria-label="CogAssess home"
         >
           <img
-            src="/sjl_transparent.png"
+            src="/Icon-Only-Black.png"
             alt="St John Lynch"
             style={{ height: 28, width: "auto", display: "block" }}
           />
