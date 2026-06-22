@@ -4,8 +4,8 @@ import { useAuth } from "../context/AuthContext";
 
 const API = "http://localhost:8000";
 
-const STATUS_COLOR = { in_progress: "#854f0b", complete: "#0f6e56" };
-const STATUS_BG    = { in_progress: "#faeeda", complete: "#e1f5ee" };
+const STATUS_COLOR = { in_progress: "#854f0b", complete: "#1d666e" };
+const STATUS_BG    = { in_progress: "#faeeda", complete: "#e5f4f5" };
 
 export default function DashboardPage() {
   const { token, clinicianName } = useAuth();
@@ -89,7 +89,7 @@ export default function DashboardPage() {
                   <td style={{ padding: "12px 14px", color: "var(--color-text-secondary)" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {Array.from({ length: 3 }, (_, i) => (
-                        <span key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i < a.task_count ? "var(--color-text-success)" : "var(--color-border-secondary)" }} />
+                        <span key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i < a.task_count ? "var(--color-accent)" : "var(--color-border-secondary)" }} />
                       ))}
                     </span>
                   </td>
