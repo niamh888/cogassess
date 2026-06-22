@@ -6,7 +6,7 @@
 This letter confirms the contribution of Niamh St John Lynch (St John Lynch & Co.) to the CogAssess project undertaken by MemoryTell Ltd.
 
 **Contributor:** Niamh St John Lynch, Director, St John Lynch & Co.
-**Period of contribution:** [Start month/year] – June 2026
+**Period of contribution:** February 2025 – June 2026
 **Project:** CogAssess — cognitive screening platform development
 
 ---
