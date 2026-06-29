@@ -14,21 +14,35 @@ CogAssess: A Browser-Based Multi-Domain Speech Biomarker Assessment Platform for
 |---|---|---|---|---|
 | Niamh St John Lynch | St John Lynch & Co. | Director / Founder | nmstjoly@gmail.com | 100% |
 
-> **Note:** This invention was conceived and developed in the inventor's capacity as Director of St John Lynch & Co., a commercial entity independent of Dundalk Institute of Technology. It does not form part of, and was not funded by, the inventor's PhD research at DkIT. No DkIT resources, supervision, or institutional facilities were used in its development.
+> **Note on dual development context:** The CogAssess platform has been developed across two distinct phases with different organisational contexts, as described in Section 3. The core speech biomarker pipeline (v0.5.0-beta) was conceived and developed entirely in the inventor's capacity as Director of St John Lynch & Co., independently of DkIT. The change management and real-time monitoring architecture (v1.0.0) was subsequently developed to support the inventor's PhD research at DkIT. The IP position for each version is addressed in Section 10. Inventors with queries regarding the boundary between these two phases should contact both DkIT Technology Transfer and St John Lynch & Co.
 
 ---
 
 ### 3. Contribution to the Invention
 
-I, Niamh St John Lynch, conceived and directed the development of the CogAssess platform in my capacity as Director of St John Lynch & Co. Working informally with MemoryTell Ltd., I developed a feasibility prototype comprising:
+I, Niamh St John Lynch, conceived and directed the development of the CogAssess platform across two phases:
+
+**Phase 1 — Commercial feasibility prototype (v0.5.0-beta, June 2026)**
+
+In my capacity as Director of St John Lynch & Co., I independently conceived, named, and developed CogAssess as a feasibility prototype. The concept, architecture, and name originated with the inventor. The prototype was not commissioned by any third party. It comprises:
 
 - A five-stage AI/ML speech biomarker pipeline (CogAssess)
 - A full IEC 62304 Class B software lifecycle documentation suite (SRS, SAD, SVP, RMF, SOUP, SEC, RTM, VP, VR, and Investigator's Brochure for EU MDR Article 62)
 - Regulatory and clinical workflow documentation
 
-This work was not formally commissioned but was carried out to demonstrate the feasibility of a commercially-deployable cognitive screening platform based on the TELL research architecture. The prototype and documentation were shared with MemoryTell Ltd. during the course of an informal working relationship.
+During a separate working relationship with MemoryTell Ltd. (relating to the AIa-CMP platform), the inventor demonstrated the CogAssess prototype to MemoryTell Ltd. as an illustration of what was technically feasible in the cognitive screening domain. This demonstration was voluntary and unsolicited; no service agreement, commission, or payment was made in respect of CogAssess. The inventor subsequently withdrew from the working relationship with MemoryTell Ltd. This phase was conducted entirely in a commercial capacity, independently of any research obligations to Dundalk Institute of Technology.
 
-This work was conducted entirely in a commercial capacity and is independent of any research obligations to Dundalk Institute of Technology.
+**Phase 2 — Change management and real-time monitoring architecture (v1.0.0, June 2026)**
+
+Following delivery of v0.5.0-beta, a further phase of development was undertaken to support the inventor's PhD research at Dundalk Institute of Technology. This phase produced an integrated change management and real-time monitoring system, comprising:
+
+- A Predetermined Change Control Plan (PCCP) expressed as a versioned, machine-readable configuration artefact (`change_control.json`), aligned with FDA (2024) and MDCG-2025-6 (2025) guidance
+- A four-metric statistical drift detection suite (Z-score, Population Stability Index, Kolmogorov-Smirnov test, CUSUM) operating across 28 pipeline features
+- Automated clinical performance gates: sensitivity and specificity monitoring against clinician-confirmed outcome labels, with threshold breach triggering formal change events
+- A three-layer change notification and governance workflow (dashboard, engineering log, database audit trail)
+- A clinician-facing confirmed diagnosis UI embedded in the clinical findings workflow
+
+This phase is documented in a Technology Report paper submitted to Frontiers in Digital Health (in preparation). The IP position for this phase is addressed in Section 10.
 
 Signature: __________________________ Date: ______________
 
@@ -36,9 +50,16 @@ Signature: __________________________ Date: ______________
 
 ### 4. Description of Invention
 
-CogAssess is a clinician-facing, browser-based feasibility prototype for a Software as a Medical Device (SaMD) that captures short speech samples from patients and automatically scores cognitive biomarkers across four clinical domains: Motor Speech, Semantic Memory, Episodic Memory, and Emotional Processing.
+CogAssess is a clinician-facing, browser-based Software as a Medical Device (SaMD) that captures short speech samples from patients and automatically scores cognitive biomarkers across four clinical domains: Motor Speech, Semantic Memory, Episodic Memory, and Emotional Processing.
 
-**Note:** CogAssess is a feasibility prototype, not a finished commercial product. Significant further development, clinical validation, and regulatory submission work would be required before commercial deployment.
+**Version history:**
+
+| Version | Date | Status | Context |
+|---|---|---|---|
+| v0.5.0-beta | June 2026 | Feasibility prototype | Delivered to MemoryTell Ltd. as a commercial initiative of St John Lynch & Co. |
+| v1.0.0 | June 2026 | Research prototype with integrated monitoring | Developed to support PhD research at Dundalk Institute of Technology; adds PCCP change management and real-time performance monitoring |
+
+**Note:** CogAssess v1.0.0 is a research prototype, not a finished commercial product. Significant clinical validation and regulatory submission work would be required before commercial deployment.
 
 The system operates as a five-stage AI/ML pipeline:
 
@@ -86,14 +107,14 @@ Accompanying the prototype is a complete IEC 62304 Class B documentation suite, 
 
 | Field | Detail |
 |---|---|
-| Industry or other Sponsor | MemoryTell Ltd. (recipient of prototype; payment for services via MemoryTell's grant workpackages) |
+| Industry or other Sponsor | None — CogAssess was self-funded and independently developed |
 | % Support | — |
-| Contract/Grant No. | MemoryTell Ltd. grant reference [fill in if known] |
-| Contact Name | Corrina [fill in surname] |
-| Phone No. | [Fill in] |
-| Address | [Fill in] |
+| Contract/Grant No. | — |
+| Contact Name | — |
+| Phone No. | — |
+| Address | — |
 
-> **Note:** MemoryTell Ltd. received a government/agency grant. Payment to St John Lynch & Co. for services rendered (€18,000 over 18 months, commencing June 2026) is structured retrospectively against MemoryTell's grant workpackages, reflecting the work completed to date on the prototype and documentation suite.
+> **Note:** MemoryTell Ltd. received a demonstration of the CogAssess prototype during a separate working relationship with the inventor (relating to the AIa-CMP platform). MemoryTell Ltd. is not a sponsor of this invention and made no financial contribution to its development. No service agreement or payment arrangement exists in respect of CogAssess.
 
 ---
 
@@ -113,7 +134,7 @@ The prototype and documentation have been made available to MemoryTell Ltd. to s
 
 ### 9. Was there transfer of any materials/information to or from other institutions regarding this invention?
 
-The CogAssess prototype codebase and IEC 62304 Class B documentation suite were shared with MemoryTell Ltd. during the course of an informal working relationship. Payment for this contribution is being made retrospectively through MemoryTell's grant workpackage structure (€18,000 over 18 months from June 2026).
+The CogAssess prototype codebase and IEC 62304 Class B documentation suite were demonstrated to MemoryTell Ltd. during a separate working relationship relating to the AIa-CMP platform. This sharing was voluntary and unsolicited; no service agreement, commission, or payment was made or agreed in respect of CogAssess. The NDA in place between the inventor and MemoryTell Ltd. (executed prior to the conception of CogAssess) obligates MemoryTell Ltd. to treat shared materials as confidential but does not confer any rights to use, copy, or develop the CogAssess materials. The inventor has since withdrawn from the working relationship with MemoryTell Ltd.
 
 Access to the AIa-CMP platform (a separate software tool with independent IP, involving DkIT) was also provided to MemoryTell Ltd. during this period. Licensing terms for AIa-CMP access are governed separately and are not part of this declaration.
 
@@ -123,19 +144,21 @@ The system architecture is conceptually inspired by the published TELL research 
 
 ### 10. Have any third parties any rights to this invention?
 
-**MemoryTell Ltd.** received the CogAssess prototype and documentation as a contribution during an informal working arrangement. Payment for this contribution (€18,000 over 18 months) is being made via MemoryTell's grant workpackages. MemoryTell Ltd. does not hold IP ownership in the invention.
+**v0.5.0-beta (core pipeline and documentation suite):** IP vests in St John Lynch & Co. as the originating commercial entity. MemoryTell Ltd. received the prototype and documentation as a contribution and does not hold IP ownership. Dundalk Institute of Technology has no rights to this phase of development, which was conducted independently of the inventor's PhD research.
 
-Google LLC holds rights to the Cloud Speech-to-Text (Chirp) API used within the pipeline, accessed under a commercial subscription licence. All other third-party components are used under MIT, Apache 2.0, ISC, or BSD licences which impose no IP claims on the derived work.
+**v1.0.0 (change management and monitoring architecture):** This phase was developed in the context of the inventor's PhD research at Dundalk Institute of Technology. The IP position for this phase has not yet been formally agreed and should be clarified with DkIT Technology Transfer before any commercial exploitation of this component. *(Add outcome of TT discussion here.)*
 
-Dundalk Institute of Technology has no rights to this invention, which was developed independently of the inventor's PhD research engagement with DkIT.
+**Google LLC** holds rights to the Cloud Speech-to-Text (Chirp) API used within the pipeline, accessed under a commercial subscription licence. All other third-party components are used under MIT, Apache 2.0, ISC, or BSD licences which impose no IP claims on the derived work.
 
 ---
 
 ### 11. Are there any existing or planned disclosures regarding this invention?
 
-An Investigator's Brochure (IB) has been drafted for a planned EU MDR Article 62 clinical investigation. Academic paper drafts are in preparation. No public disclosure has been made to date.
+An Investigator's Brochure (IB) has been drafted for a planned EU MDR Article 62 clinical investigation. A Technology Report paper describing the v1.0.0 change management architecture is in preparation for submission to Frontiers in Digital Health. No public disclosure has been made to date.
 
-The prototype and documentation suite have been shared with MemoryTell Ltd., with payment structured via their grant workpackages. An informal written agreement (WhatsApp exchange, 8 June 2026) documents the €18,000 payment schedule over 18 months for work completed to date.
+The v0.5.0-beta prototype and documentation suite were demonstrated to MemoryTell Ltd. during a separate working engagement. No formal agreement, service contract, or payment arrangement was executed in respect of CogAssess. The only binding instrument between the inventor and MemoryTell Ltd. is a confidentiality NDA, executed prior to the conception of CogAssess.
+
+The v1.0.0 monitoring architecture is being disclosed in the context of PhD research at DkIT. The relationship between the commercial prototype and the PhD contribution is documented in Sections 3 and 10.
 
 *(Update this section if any conference presentations, paper submissions, or formal agreements are executed.)*
 
@@ -149,7 +172,11 @@ No.
 
 ### 13. Is a model or prototype available? Has the invention been demonstrated practically?
 
-Yes. A working prototype (v1.0.0) is available with all five pipeline stages operational. The system has been demonstrated with real speech samples, producing scored reports across all four cognitive domains. A complete IEC 62304 Class B documentation suite has been authored by the inventor. The prototype and documentation have been provided to MemoryTell Ltd. and are in active use for their product development.
+Yes. Two versions are available:
+
+**v0.5.0-beta** — the feasibility prototype delivered to MemoryTell Ltd. in June 2026. Includes the full five-stage speech biomarker pipeline, clinical workflow UI, and IEC 62304 Class B documentation suite. Demonstrated with real speech samples, producing scored reports across all four cognitive domains.
+
+**v1.0.0** — extends v0.5.0-beta with an integrated change management and real-time monitoring system, developed to support PhD research at DkIT. Implements a Predetermined Change Control Plan (PCCP) as a machine-readable artefact, four-metric statistical drift detection across 28 pipeline features, automated clinical performance gates (sensitivity/specificity monitoring), and a three-layer governance audit trail. Documented in a Technology Report paper submitted to Frontiers in Digital Health (in preparation).
 
 ---
 
@@ -170,5 +197,6 @@ Signature (Niamh St John Lynch) Date
 - [ ] Section 3: sign and date contribution paragraph
 - [ ] Section 6: add Corrina's full name, MemoryTell address, and grant reference number if known
 - [ ] Section 9: confirm AIa-CMP licensing position with DkIT
-- [ ] Section 11: update once Corrina replies confirming the payment agreement in writing
+- [ ] Section 10: clarify IP position for v1.0.0 monitoring architecture with DkIT Technology Transfer; record outcome
+- [ ] Section 11: update once Frontiers paper is submitted
 - [ ] Final signature and date
