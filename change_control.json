@@ -1,0 +1,57 @@
+{
+  "_comment": "CogAssess Change Control Plan — defines thresholds that trigger a formal change assessment. Edit thresholds only after clinical validation review.",
+  "global": {
+    "z_score_watch": 1.5,
+    "z_score_critical": 2.5
+  },
+  "features": {
+    "scores.composite": {
+      "label": "Composite cognitive score",
+      "z_score_critical": 2.0,
+      "min_mean": 30,
+      "max_mean": 95
+    },
+    "scores.motor_speech": {
+      "label": "Motor speech score",
+      "z_score_critical": 2.0
+    },
+    "scores.semantic_memory": {
+      "label": "Semantic memory score",
+      "z_score_critical": 2.0
+    },
+    "scores.episodic_memory": {
+      "label": "Episodic memory score",
+      "z_score_critical": 2.0
+    },
+    "scores.emotional_processing": {
+      "label": "Emotional processing score",
+      "z_score_critical": 2.0
+    },
+    "stt.confidence": {
+      "label": "Speech-to-text confidence",
+      "z_score_critical": 2.0,
+      "min_mean": 0.80
+    },
+    "acoustic.hnr_db": {
+      "label": "Harmonic-to-noise ratio (audio quality)",
+      "z_score_critical": 2.0,
+      "min_mean": -5.0
+    },
+    "acoustic.pitch_mean_hz": {
+      "label": "Mean fundamental frequency",
+      "z_score_critical": 2.5
+    },
+    "acoustic.speech_rate_syllables_per_sec": {
+      "label": "Speech rate",
+      "z_score_critical": 2.5
+    },
+    "semantics.semantic_variability": {
+      "label": "Semantic variability",
+      "z_score_critical": 2.5
+    },
+    "morphology.type_token_ratio": {
+      "label": "Lexical diversity (type-token ratio)",
+      "z_score_critical": 2.5
+    }
+  }
+}

@@ -15,6 +15,7 @@ import ReportPage           from "./pages/ReportPage";
 import ClinicalFindingsPage from "./pages/ClinicalFindingsPage";
 import PatientSummaryPage   from "./pages/PatientSummaryPage";
 import AboutPage            from "./pages/AboutPage";
+import MonitoringPage       from "./pages/MonitoringPage";
 
 // Full clinician shell: sticky header with logo + footer with legal links.
 function ClinicianLayout() {
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/assessment/:key/findings"     element={<ClinicalFindingsPage />} />
           <Route path="/assessment/:key/summary"      element={<PatientSummaryPage />} />
           <Route path="/about"                        element={<AboutPage />} />
+          <Route path="/monitoring"                   element={<MonitoringPage />} />
         </Route>
 
         {/* Patient recording screen — intentionally no header */}

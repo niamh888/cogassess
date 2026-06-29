@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Float, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -103,3 +103,54 @@ class TaskResult(Base):
     recorded_at   = Column(DateTime, default=datetime.utcnow)
 
     assessment    = relationship("Assessment", back_populates="task_results")
+    metrics       = relationship("PipelineMetric", back_populates="task_result",
+                                 cascade="all, delete-orphan")
+
+
+class PipelineMetric(Base):
+    """Per-stage timing record written after every successful task submission."""
+    __tablename__ = "pipeline_metrics"
+
+    id             = Column(Integer, primary_key=True)
+    task_result_id = Column(Integer, ForeignKey("task_results.id"), nullable=False)
+    stage          = Column(String, nullable=False)  # stt | acoustic | morphology | semantics | emotion | total
+    duration_ms    = Column(Integer, nullable=False)
+    recorded_at    = Column(DateTime, default=datetime.utcnow)
+
+    task_result    = relationship("TaskResult", back_populates="metrics")
+
+
+class ChangeEvent(Base):
+    """Records a threshold breach that requires formal change assessment review."""
+    __tablename__ = "change_events"
+
+    id               = Column(Integer, primary_key=True)
+    feature_path     = Column(String, nullable=False)
+    breach_type      = Column(String, nullable=False)  # "z_score" | "threshold_min" | "threshold_max"
+    severity         = Column(String, nullable=False)  # "watch" | "critical"
+    detail           = Column(Text, nullable=False)    # JSON: label, actual values, limits
+    status           = Column(String, default="open")  # "open" | "reviewed" | "dismissed"
+    reviewed_by_id   = Column(Integer, ForeignKey("clinicians.id"), nullable=True)
+    review_notes     = Column(Text, nullable=True)
+    opened_at        = Column(DateTime, default=datetime.utcnow)
+    reviewed_at      = Column(DateTime, nullable=True)
+
+    reviewed_by      = relationship("Clinician")
+
+
+class DriftBaseline(Base):
+    """Baseline feature statistics computed from historical task results.
+    Recomputed on demand via POST /monitoring/baseline/compute."""
+    __tablename__ = "drift_baselines"
+
+    id           = Column(Integer, primary_key=True)
+    feature_path = Column(String, nullable=False, unique=True)  # e.g. "acoustic.pitch_mean_hz"
+    stage        = Column(String, nullable=False)               # stt | acoustic | morphology | semantics | emotion | scores
+    mean         = Column(Float, nullable=False)
+    std          = Column(Float, nullable=False)
+    p5           = Column(Float)
+    p25          = Column(Float)
+    p75          = Column(Float)
+    p95          = Column(Float)
+    n_samples    = Column(Integer, nullable=False)
+    computed_at  = Column(DateTime, default=datetime.utcnow)

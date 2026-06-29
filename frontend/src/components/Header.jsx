@@ -1,9 +1,21 @@
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+const API = "http://localhost:8000";
+
 export default function Header() {
-  const { clinicianName, logout } = useAuth();
+  const { clinicianName, logout, token } = useAuth();
   const navigate = useNavigate();
+  const [openEvents, setOpenEvents] = useState(0);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/monitoring/alerts`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setOpenEvents(d.open_events); })
+      .catch(() => {});
+  }, [token]);
 
   function handleLogout() {
     logout();
@@ -45,6 +57,17 @@ export default function Header() {
 
         {/* Right side */}
         <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
+          <Link
+            to="/monitoring"
+            style={{ fontSize: 13, color: "var(--color-text-secondary)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}
+          >
+            Monitoring
+            {openEvents > 0 && (
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "#991b1b", color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1 }}>
+                {openEvents}
+              </span>
+            )}
+          </Link>
           <Link
             to="/about"
             style={{ fontSize: 13, color: "var(--color-text-secondary)", textDecoration: "none" }}
