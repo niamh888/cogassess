@@ -1,16 +1,48 @@
-# React + Vite
+# CogAssess — React Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite single-page application for the CogAssess clinical speech assessment platform.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev        # dev server at http://localhost:5173
+```
 
-## React Compiler
+The dev server proxies nothing — it expects the FastAPI backend running at `http://localhost:8000`. Start the backend first (see root `README.md`).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Production build
 
-## Expanding the ESLint configuration
+```bash
+npm run build      # outputs to frontend/dist/
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The `dist/` folder is served as static files by nginx (see `docs/DEPLOYMENT.md §6.2`). Do not use `npm run dev` in production.
+
+## Pages
+
+| Route | Page | Notes |
+|-------|------|-------|
+| `/login` | LoginPage | JWT authentication |
+| `/dashboard` | DashboardPage | All assessments |
+| `/assessments/new` | IntakePage | Patient intake form |
+| `/assessments/:key/patient` | PatientPage | Patient-facing recording screen |
+| `/assessments/:key/report` | ReportPage | Clinical report with scores and flags |
+| `/assessments/:key/findings` | ClinicalFindingsPage | Clinician outcome recording |
+| `/assessments/:key/summary` | PatientSummaryPage | Printable patient-facing summary |
+| `/monitoring` | MonitoringPage | Change management dashboard (drift, events, clinical metrics) |
+| `/about` | AboutPage | Platform information |
+
+## API base URL
+
+All pages hardcode `http://localhost:8000` as the API base. For production, update each page or centralise into a shared constant before building.
+
+## Key dependencies
+
+| Package | Purpose |
+|---------|---------|
+| React 18 | UI framework |
+| React Router v6 | Client-side routing |
+| Vite | Build tool and dev server |
+
+*Part of CogAssess — MemoryTell Ltd © 2026*

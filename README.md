@@ -16,6 +16,7 @@ CogAssess records short speech samples from patients, runs them through a five-s
 - **Clinical findings workflow** — outcome, follow-up date, internal notes, patient summary
 - **Patient summary page** — printable, no numerical scores, plain-English bell curve
 - **JWT authentication** — 8-hour sessions, bcrypt password hashing
+- **PCCP-aligned change management monitoring** — drift detection (z-score, PSI, K-S, CUSUM), three-layer change event notification, clinical performance metrics (F1, AUC-ROC)
 - **IEC 62304 Class B** SDLC documentation suite included in `docs/`
 
 ---
@@ -256,6 +257,48 @@ Tests that require a live browser (TC-REC-001, TC-REC-002) and tests that requir
 
 ---
 
+## Change management monitoring
+
+CogAssess includes a PCCP-aligned (Predetermined Change Control Plan) monitoring system accessible via the **Monitoring** page after login.
+
+### What it monitors
+
+| Metric | What it detects |
+|--------|----------------|
+| Z-score | Mean shift in any pipeline feature relative to the baseline |
+| PSI (Population Stability Index) | Distributional shape change — detects drift z-score misses |
+| K-S test (Kolmogorov-Smirnov) | Full distributional comparison with statistical p-value |
+| CUSUM | Gradual monotonic trends that accumulate over many assessments |
+| Emotion entropy | Stability of the emotion classifier's confidence distribution |
+
+The overall feature status is the **worst-case** across all metrics. Thresholds are defined in `change_control.json` — edit only after clinical validation review.
+
+### Change events
+
+When a threshold is breached, the system:
+1. Raises a **red badge** on the Monitoring nav link (ambient alert for any logged-in user)
+2. Appends a structured entry to `logs/change_events.md` (engineering log, persistent)
+3. Creates a `ChangeEvent` record in the database requiring formal review or dismissal
+
+Open change events must not be left unreviewed — see `docs/DEPLOYMENT.md §6.7.4`.
+
+### Establishing the baseline
+
+Navigate to **Monitoring → Compute baseline**. Requires ≥ 5 completed assessments. Recompute after every 20–30 new assessments to keep the baseline clinically representative.
+
+### Unlocking clinical performance metrics (F1, AUC, sensitivity, specificity)
+
+These metrics require clinician-confirmed outcome labels. Add them after each patient's diagnosis is confirmed:
+
+```bash
+PUT /assessments/{assessment_key}/clinical-label
+Body: { "label": "normal" }   # or "mci", "dementia", "other"
+```
+
+Requires ≥ 10 labeled assessments with at least one normal and one impaired case.
+
+---
+
 ## Production deployment
 
 > Full instructions are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Read that document before proceeding.
@@ -273,6 +316,10 @@ Tests that require a live browser (TC-REC-001, TC-REC-002) and tests that requir
 - [ ] Default `admin` / `changeme` password changed before first clinical session
 - [ ] Full test suite run on the production server: `python run_tests.py` → must show `Failed: 0`
 - [ ] Test log saved to the trial master file **[REGULATORY]**
+- [ ] `change_control.json` present in project root and unmodified
+- [ ] Monitoring page loads without error after first startup
+- [ ] Any change events from test data dismissed before clinical use
+- [ ] Clinical outcome label workflow explained to principal investigator (see [docs/DEPLOYMENT.md §6.7.5](docs/DEPLOYMENT.md))
 - [ ] Deployment sign-off table in [docs/DEPLOYMENT.md §9](docs/DEPLOYMENT.md) completed and filed **[REGULATORY]**
 
 **AWS users:** See [docs/DEPLOYMENT.md §4](docs/DEPLOYMENT.md) for EC2 + RDS setup, ALB/HTTPS via ACM, and Secrets Manager credential storage.
@@ -297,15 +344,19 @@ Tests that require a live browser (TC-REC-001, TC-REC-002) and tests that requir
 
 ```
 cogassess/
-├── main.py                  # FastAPI backend — pipeline, auth, all endpoints
-├── models.py                # SQLAlchemy ORM models
+├── main.py                  # FastAPI backend — pipeline, auth, monitoring, all endpoints
+├── models.py                # SQLAlchemy ORM models (incl. PipelineMetric, DriftBaseline, ChangeEvent)
 ├── schemas.py               # Pydantic request/response schemas
 ├── database.py              # DB engine and session
 ├── auth.py                  # JWT creation and verification
 ├── init_db.py               # First-run DB initialisation
 ├── migrate.py               # Additive schema migrations
+├── change_control.json      # PCCP artefact — performance thresholds (edit only after clinical review)
 ├── requirements.txt         # Python dependencies
 ├── cogassess.db             # SQLite database (test data only — replace for production)
+├── logs/
+│   ├── change_events.md     # Append-only engineering change event log
+│   └── anomaly_log.md       # Test failure log
 ├── docs/                    # IEC 62304 Class B / IEC 82304-1 documentation suite
 │   ├── SRS.md / SRS.docx    # CA-SRS-001 Software Requirements Specification
 │   ├── SAD.md / SAD.docx    # CA-SAD-001 Software Architecture Description
@@ -334,6 +385,7 @@ cogassess/
 │   │   │   ├── ReportPage.jsx         # Clinical report
 │   │   │   ├── ClinicalFindingsPage.jsx
 │   │   │   ├── PatientSummaryPage.jsx # Printable patient summary
+│   │   │   ├── MonitoringPage.jsx     # Change management dashboard
 │   │   │   └── AboutPage.jsx
 │   │   ├── components/
 │   │   │   ├── Header.jsx        # Sticky header with logo → home
@@ -366,7 +418,7 @@ A full IEC 62304 Class B / IEC 82304-1 software lifecycle document suite is in `
 | Software Verification Plan | CA-SVP-001 | 44 test cases across 11 requirement groups |
 | Risk Management File | CA-RMF-001 | ISO 14971 hazard analysis — 10 hazards, all residual risks acceptable |
 | SOUP Evaluation Records | CA-SOUP-001 | 14 third-party components evaluated including CVE review |
-| Software Release Record | CA-SRR-001 | v0.5.0-beta release baseline, known limitations, SDLC checklist |
+| Software Release Record | CA-SRR-001 | v1.0.0 release baseline, known limitations, SDLC checklist |
 | Security Architecture & Threat Model | CA-SEC-001 | STRIDE analysis, pen test record, production pre-conditions |
 | Requirements Traceability Matrix | CA-RTM-001 | Full mapping of all ~110 requirements to test cases and verification status |
 | Software Validation Plan | CA-VP-001 | IEC 82304-1 §6 — 5 validation activities, acceptance criteria, release gates |
@@ -389,7 +441,7 @@ A full IEC 62304 Class B / IEC 82304-1 software lifecycle document suite is in `
 
 ---
 
-## Known limitations (v0.5.0-beta)
+## Known limitations (v1.0.0)
 
 - Scoring algorithms are **not yet clinically validated** on a representative patient population
 - SQLite is suitable for **single-site pilot use** only — migrate to PostgreSQL for multi-clinician production deployment

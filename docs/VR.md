@@ -190,7 +190,7 @@ Three BOLA (Broken Object Level Authorization) vulnerabilities were identified d
 | Number of participants | [minimum 5] |
 | Participant roles | [e.g., 2 neurologists, 2 neuropsychologists, 1 GP] |
 | Site | [institution] |
-| CogAssess version | 0.5.0-beta |
+| CogAssess version | 1.0.0 |
 
 ### 4.1 Task Completion Results
 

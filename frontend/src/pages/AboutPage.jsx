@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
-const VERSION    = "0.5.0-beta";
-const BUILD_DATE = "2026-06-05";
+const VERSION    = "1.0.0";
+const BUILD_DATE = "2026-06-29";
 
 const PIPELINE_COMPONENTS = [
   { name: "Speech recognition",       version: "Google Cloud Chirp",        purpose: "Converts spoken audio to text" },

@@ -27,12 +27,7 @@
       "label": "Emotional processing score",
       "z_score_critical": 2.0
     },
-    "stt.confidence": {
-      "label": "Speech-to-text confidence",
-      "z_score_critical": 2.0,
-      "min_mean": 0.80
-    },
-    "acoustic.hnr_db": {
+"acoustic.hnr_db": {
       "label": "Harmonic-to-noise ratio (audio quality)",
       "z_score_critical": 2.0,
       "min_mean": -5.0

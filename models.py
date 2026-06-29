@@ -44,6 +44,7 @@ class Assessment(Base):
     reason           = Column(String)
     notes            = Column(String)
     status               = Column(String, default="in_progress")
+    clinical_outcome_label = Column(String, nullable=True)   # "normal" | "mci" | "dementia" | "other"
     selected_tasks       = Column(Text, default='["routine","fluency","memory"]')
     environment          = Column(String, default="Quiet clinical room")
     had_interruptions    = Column(String, default="None")
@@ -143,14 +144,17 @@ class DriftBaseline(Base):
     Recomputed on demand via POST /monitoring/baseline/compute."""
     __tablename__ = "drift_baselines"
 
-    id           = Column(Integer, primary_key=True)
-    feature_path = Column(String, nullable=False, unique=True)  # e.g. "acoustic.pitch_mean_hz"
-    stage        = Column(String, nullable=False)               # stt | acoustic | morphology | semantics | emotion | scores
-    mean         = Column(Float, nullable=False)
-    std          = Column(Float, nullable=False)
-    p5           = Column(Float)
-    p25          = Column(Float)
-    p75          = Column(Float)
-    p95          = Column(Float)
-    n_samples    = Column(Integer, nullable=False)
-    computed_at  = Column(DateTime, default=datetime.utcnow)
+    id               = Column(Integer, primary_key=True)
+    feature_path     = Column(String, nullable=False, unique=True)
+    stage            = Column(String, nullable=False)
+    mean             = Column(Float, nullable=False)
+    std              = Column(Float, nullable=False)
+    p5               = Column(Float)
+    p25              = Column(Float)
+    p75              = Column(Float)
+    p95              = Column(Float)
+    skewness         = Column(Float)
+    kurtosis_excess  = Column(Float)
+    raw_values       = Column(Text)       # JSON float array — used for K-S test
+    n_samples        = Column(Integer, nullable=False)
+    computed_at      = Column(DateTime, default=datetime.utcnow)

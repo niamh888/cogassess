@@ -71,7 +71,7 @@ The present clinical investigation is the first structured study of CogAssess in
 
 ### 2.3 Development Stage
 
-CogAssess is at version 0.5.0-beta. It has completed:
+CogAssess is at version 1.0.0. It has completed:
 
 - Full IEC 62304 Class B software development lifecycle documentation
 - Internal software verification against 30 defined test cases (CA-SVP-001)
@@ -206,7 +206,7 @@ Domain scores are computed from a weighted combination of pipeline outputs. All 
 | Episodic memory (0–100) | First-person ratio, type-token ratio, disfluency count |
 | Emotional processing (0–100) | Dominant emotion, valence, emotional range |
 
-> **Important limitation:** The scoring weights in CogAssess v0.5.0-beta are clinician-informed and theoretically derived. They have not been empirically calibrated against a clinical reference standard. The present investigation is intended, in part, to generate the data necessary for such calibration. Investigators must present scores to patients as indicative only.
+> **Important limitation:** The scoring weights in CogAssess v1.0.0 are clinician-informed and theoretically derived. They have not been empirically calibrated against a clinical reference standard. The present investigation is intended, in part, to generate the data necessary for such calibration. Investigators must present scores to patients as indicative only.
 
 ### 3.5 Population Reference Distribution
 

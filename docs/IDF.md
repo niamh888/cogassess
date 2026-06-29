@@ -149,7 +149,7 @@ No.
 
 ### 13. Is a model or prototype available? Has the invention been demonstrated practically?
 
-Yes. A working feasibility prototype (v0.5.0-beta) is available with all five pipeline stages operational. The system has been demonstrated with real speech samples, producing scored reports across all four cognitive domains. A complete IEC 62304 Class B documentation suite has been authored by the inventor. The prototype and documentation have been provided to MemoryTell Ltd. and are in active use for their product development.
+Yes. A working prototype (v1.0.0) is available with all five pipeline stages operational. The system has been demonstrated with real speech samples, producing scored reports across all four cognitive domains. A complete IEC 62304 Class B documentation suite has been authored by the inventor. The prototype and documentation have been provided to MemoryTell Ltd. and are in active use for their product development.
 
 ---
 

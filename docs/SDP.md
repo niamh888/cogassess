@@ -47,7 +47,7 @@ This document provides a unified reference for all development activities. It en
 
 ### 1.2 Scope
 
-This plan applies to all software development activities for CogAssess from initial design through to formal release. It covers the backend (Python/FastAPI), frontend (React 18 SPA), and the integrated speech analysis pipeline. It applies to version 0.5.0-beta and all subsequent versions within the 0.x development series.
+This plan applies to all software development activities for CogAssess from initial design through to formal release. It covers the backend (Python/FastAPI), frontend (React 18 SPA), and the integrated speech analysis pipeline. It applies to version 1.0.0 and all subsequent versions within the 1.x release series.
 
 Activities governed by this plan include:
 

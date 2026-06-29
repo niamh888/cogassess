@@ -34,12 +34,14 @@ from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import Optional
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 import pathlib
 import statistics
 import tempfile, os, time, uuid, json
 from datetime import datetime
+from scipy import stats as scipy_stats
+from sklearn.metrics import roc_auc_score, f1_score, confusion_matrix
 
 from database import Base, engine, get_db
 import models, schemas
@@ -47,6 +49,25 @@ from auth import verify_password, hash_password, create_access_token, get_curren
 
 # Create tables on startup (safe to run repeatedly)
 Base.metadata.create_all(bind=engine)
+
+# Lightweight column migrations — SQLite cannot use IF NOT EXISTS on ALTER TABLE,
+# so we attempt each and swallow the "duplicate column" error.
+def _run_migrations():
+    _new_cols = [
+        "ALTER TABLE drift_baselines ADD COLUMN skewness REAL",
+        "ALTER TABLE drift_baselines ADD COLUMN kurtosis_excess REAL",
+        "ALTER TABLE drift_baselines ADD COLUMN raw_values TEXT",
+        "ALTER TABLE assessments ADD COLUMN clinical_outcome_label VARCHAR",
+    ]
+    with engine.connect() as _conn:
+        for _sql in _new_cols:
+            try:
+                _conn.execute(text(_sql))
+                _conn.commit()
+            except Exception:
+                pass  # column already exists
+
+_run_migrations()
 
 _nlp = spacy.load("en_core_web_sm")
 _embedder = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
@@ -656,7 +677,7 @@ def _check_change_control_thresholds(drift_features: dict, db: Session) -> int:
 
 # Numeric fields to track per pipeline stage (non-numeric fields are excluded)
 _DRIFT_FEATURES = {
-    "stt":        ["confidence", "words_per_minute"],
+    "stt":        ["words_per_minute"],
     "acoustic":   ["speech_rate_syllables_per_sec", "pause_count", "mean_pause_duration_ms",
                    "total_pause_duration_sec", "pitch_mean_hz", "pitch_std_hz", "hnr_db",
                    "articulation_rate"],
@@ -691,24 +712,87 @@ def _extract_feature_vectors(task_results: list) -> dict:
             if isinstance(val, (int, float)) and not np.isnan(val):
                 vectors.setdefault(f"scores.{field}", []).append(float(val))
 
+        # Shannon entropy of the emotion probability distribution (7 classes, max = log2(7) ≈ 2.807 bits)
+        _EMOTION_KEYS = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
+        emotion_data = pipeline.get("emotion", {})
+        probs = np.array([float(emotion_data.get(k, 0.0)) for k in _EMOTION_KEYS])
+        total = probs.sum()
+        if total > 0:
+            probs = probs / total
+            entropy = -float(np.sum(probs * np.log2(probs + 1e-12)))
+            vectors.setdefault("emotion.entropy", []).append(round(entropy, 4))
+
     return vectors
 
 
 def _feature_stats(values: list) -> dict | None:
-    """Compute mean, std, and percentiles for a list of floats."""
+    """Compute summary statistics for a feature vector, including shape metrics and raw values for K-S."""
     n = len(values)
     if n < 3:
         return None
     arr = np.array(values, dtype=float)
+    std_val = float(np.std(arr, ddof=1)) if n > 1 else 0.0
+    if std_val > 0 and n >= 3:
+        centred = (arr - arr.mean()) / std_val
+        skew_val = float(np.mean(centred ** 3))
+        kurt_val = float(np.mean(centred ** 4)) - 3.0
+    else:
+        skew_val = 0.0
+        kurt_val = 0.0
     return {
-        "mean": float(np.mean(arr)),
-        "std":  float(np.std(arr, ddof=1)) if n > 1 else 0.0,
-        "p5":   float(np.percentile(arr, 5)),
-        "p25":  float(np.percentile(arr, 25)),
-        "p75":  float(np.percentile(arr, 75)),
-        "p95":  float(np.percentile(arr, 95)),
-        "n":    n,
+        "mean":            float(np.mean(arr)),
+        "std":             std_val,
+        "p5":              float(np.percentile(arr, 5)),
+        "p25":             float(np.percentile(arr, 25)),
+        "p75":             float(np.percentile(arr, 75)),
+        "p95":             float(np.percentile(arr, 95)),
+        "skewness":        round(skew_val, 4),
+        "kurtosis_excess": round(kurt_val, 4),
+        "n":               n,
+        "raw_values":      [float(v) for v in arr],
     }
+
+
+def _compute_psi(baseline: "models.DriftBaseline", window_values: list) -> "float | None":
+    """Population Stability Index — 5-bin percentile boundaries from the stored baseline.
+    PSI < 0.1 stable · 0.1–0.25 watch · ≥ 0.25 drift (industry convention).
+    Returns None when sample counts are too small or bins are degenerate."""
+    if not window_values or None in (baseline.p5, baseline.p25, baseline.p75, baseline.p95):
+        return None
+    # Require minimum sample sizes for PSI to be meaningful
+    if baseline.n_samples < 20 or len(window_values) < 10:
+        return None
+    # Guard: degenerate bins — feature is effectively constant in the baseline
+    if baseline.p95 - baseline.p5 < 1e-9:
+        return None
+    edges    = [float("-inf"), baseline.p5, baseline.p25, baseline.p75, baseline.p95, float("inf")]
+    expected = [0.05, 0.20, 0.50, 0.20, 0.05]
+    n = len(window_values)
+    actual = []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        count = sum(1 for v in window_values if lo < v <= hi)
+        actual.append(max(count / n, 1e-4))
+    psi = sum((a - e) * np.log(a / e) for a, e in zip(actual, expected))
+    return round(float(psi), 4)
+
+
+def _compute_cusum(values: list, baseline_mean: float, baseline_std: float) -> float:
+    """Two-sided CUSUM over the ordered window, normalised to baseline std units.
+    Return value: max accumulated deviation — stable < 2 · watch < 5 · drift ≥ 5."""
+    if not values or baseline_std <= 0:
+        return 0.0
+    k = 0.5  # allowable slack (in std units)
+    s_pos = s_neg = 0.0
+    for v in values:
+        z = (v - baseline_mean) / baseline_std
+        s_pos = max(0.0, s_pos + z - k)
+        s_neg = max(0.0, s_neg - z - k)
+    return round(max(s_pos, s_neg), 3)
+
+
+def _worst_status(*statuses: str) -> str:
+    rank = {"insufficient_data": -1, "stable": 0, "watch": 1, "drift": 2}
+    return max(statuses, key=lambda s: rank.get(s, -1))
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -877,6 +961,9 @@ def compute_baseline(
             p25=st["p25"],
             p75=st["p75"],
             p95=st["p95"],
+            skewness=st.get("skewness"),
+            kurtosis_excess=st.get("kurtosis_excess"),
+            raw_values=json.dumps(st.get("raw_values", [])),
             n_samples=st["n"],
         ))
         computed += 1
@@ -898,7 +985,8 @@ def compute_baseline(
 
 
 def _compute_drift(db: Session, window: int = 20) -> dict:
-    """Core drift computation — shared by the endpoint and compute_baseline."""
+    """Multi-metric drift computation: z-score, PSI, K-S, skewness/kurtosis delta, CUSUM.
+    Status per feature is the worst-case across all available metrics."""
     baselines = {b.feature_path: b for b in db.query(models.DriftBaseline).all()}
     if not baselines:
         return None
@@ -921,37 +1009,95 @@ def _compute_drift(db: Session, window: int = 20) -> dict:
         values = recent_vectors.get(feature_path, [])
         if not values:
             summary["insufficient_data"] += 1
-            feature_results[feature_path] = {"status": "insufficient_data", "window_n": 0}
+            feature_results[feature_path] = {"status": "insufficient_data", "window_n": 0,
+                                              "stage": baseline.stage}
             continue
 
-        window_mean = float(np.mean(values))
-        z_score = (
-            abs(window_mean - baseline.mean) / baseline.std
-            if baseline.std > 0 else 0.0
-        )
-        status = "stable" if z_score < 1.5 else "watch" if z_score < 2.5 else "drift"
-        summary[status] += 1
+        arr = np.array(values, dtype=float)
+        window_mean = float(np.mean(arr))
+        n_w = len(values)
+
+        # ── Z-score ──────────────────────────────────────────────────────────
+        z_score  = abs(window_mean - baseline.mean) / baseline.std if baseline.std > 0 else 0.0
+        z_status = "stable" if z_score < 1.5 else "watch" if z_score < 2.5 else "drift"
+
+        # ── PSI ──────────────────────────────────────────────────────────────
+        psi_val    = _compute_psi(baseline, values)
+        psi_status = ("stable" if psi_val < 0.10 else "watch" if psi_val < 0.25 else "drift") if psi_val is not None else None
+
+        # ── K-S test (two-sample) ─────────────────────────────────────────────
+        ks_stat = ks_pval = ks_status = None
+        if baseline.raw_values:
+            try:
+                b_raw = json.loads(baseline.raw_values)
+                if len(b_raw) >= 3:
+                    ks_stat, ks_pval = scipy_stats.ks_2samp(b_raw, values)
+                    ks_stat  = round(float(ks_stat), 4)
+                    ks_pval  = round(float(ks_pval), 4)
+                    ks_status = "stable" if ks_stat < 0.20 else "watch" if ks_stat < 0.40 else "drift"
+            except Exception:
+                pass
+
+        # ── Skewness / kurtosis delta ─────────────────────────────────────────
+        window_skew = window_kurt = skew_delta = kurt_delta = None
+        if n_w >= 3 and baseline.std > 0:
+            centred     = (arr - arr.mean()) / (arr.std(ddof=1) or 1.0)
+            window_skew = round(float(np.mean(centred ** 3)), 3)
+            window_kurt = round(float(np.mean(centred ** 4)) - 3.0, 3)
+            if baseline.skewness is not None:
+                skew_delta = round(abs(window_skew - baseline.skewness), 3)
+            if baseline.kurtosis_excess is not None:
+                kurt_delta = round(abs(window_kurt - baseline.kurtosis_excess), 3)
+
+        # ── CUSUM ────────────────────────────────────────────────────────────
+        cusum_val    = _compute_cusum(values, baseline.mean, baseline.std)
+        cusum_status = "stable" if cusum_val < 2.0 else "watch" if cusum_val < 5.0 else "drift"
+
+        # ── Overall worst-case status ─────────────────────────────────────────
+        candidates = [z_status, cusum_status]
+        if psi_status:   candidates.append(psi_status)
+        if ks_status:    candidates.append(ks_status)
+        overall_status = _worst_status(*candidates)
+        summary[overall_status] += 1
 
         feature_results[feature_path] = {
-            "stage":         baseline.stage,
-            "baseline_mean": round(baseline.mean, 4),
-            "baseline_std":  round(baseline.std, 4),
-            "baseline_p5":   round(baseline.p5,  4) if baseline.p5  is not None else None,
-            "baseline_p95":  round(baseline.p95, 4) if baseline.p95 is not None else None,
-            "baseline_n":    baseline.n_samples,
-            "window_mean":   round(window_mean, 4),
-            "window_n":      len(values),
-            "z_score":       round(z_score, 2),
-            "status":        status,
+            "stage":              baseline.stage,
+            "baseline_mean":      round(baseline.mean, 4),
+            "baseline_std":       round(baseline.std, 4),
+            "baseline_p5":        round(baseline.p5,  4) if baseline.p5  is not None else None,
+            "baseline_p95":       round(baseline.p95, 4) if baseline.p95 is not None else None,
+            "baseline_skewness":  round(baseline.skewness, 3) if baseline.skewness is not None else None,
+            "baseline_kurtosis":  round(baseline.kurtosis_excess, 3) if baseline.kurtosis_excess is not None else None,
+            "baseline_n":         baseline.n_samples,
+            "window_mean":        round(window_mean, 4),
+            "window_n":           n_w,
+            "window_skewness":    window_skew,
+            "window_kurtosis":    window_kurt,
+            "skew_delta":         skew_delta,
+            "kurt_delta":         kurt_delta,
+            "z_score":            round(z_score, 2),
+            "z_status":           z_status,
+            "psi":                psi_val,
+            "psi_status":         psi_status,
+            "ks_stat":            ks_stat,
+            "ks_pval":            ks_pval,
+            "ks_status":          ks_status,
+            "cusum":              cusum_val,
+            "cusum_status":       cusum_status,
+            "status":             overall_status,
         }
 
     baseline_sample = next(iter(baselines.values()))
+    baseline_n_min = min(b.n_samples for b in baselines.values())
+    window_session_count = len({r.assessment_id for r in recent if r.assessment_id is not None})
     return {
-        "baseline_computed_at":  baseline_sample.computed_at.isoformat(),
-        "window_size_requested": window,
-        "window_n_actual":       len(recent),
-        "drift_summary":         summary,
-        "features":              feature_results,
+        "baseline_computed_at":   baseline_sample.computed_at.isoformat(),
+        "baseline_n_min":         baseline_n_min,
+        "window_size_requested":  window,
+        "window_n_actual":        len(recent),
+        "window_session_count":   window_session_count,
+        "drift_summary":          summary,
+        "features":               feature_results,
     }
 
 
@@ -1051,6 +1197,182 @@ def review_change_event(
         "status":      event.status,
         "reviewed_by": clinician.full_name,
         "reviewed_at": event.reviewed_at.isoformat(),
+    }
+
+
+class ClinicalLabelUpdate(BaseModel):
+    label: Optional[str] = None   # "normal" | "mci" | "dementia" | "other" | null (clears)
+
+
+@app.put("/assessments/{assessment_key}/clinical-label")
+def set_clinical_label(
+    assessment_key: str,
+    data: ClinicalLabelUpdate,
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    """Record or clear the clinician-confirmed outcome label for an assessment.
+    Required to unlock F1 / AUC metrics on the clinical performance endpoint."""
+    valid = {"normal", "mci", "dementia", "other"}
+    if data.label is not None and data.label not in valid:
+        raise HTTPException(400, f"Label must be one of {sorted(valid)} or null.")
+    assessment = db.query(models.Assessment).filter(
+        models.Assessment.assessment_key == assessment_key
+    ).first()
+    if not assessment:
+        raise HTTPException(404, "Assessment not found.")
+    assessment.clinical_outcome_label = data.label
+    db.commit()
+    return {"assessment_key": assessment_key, "clinical_outcome_label": data.label}
+
+
+@app.get("/monitoring/performance/clinical")
+def monitoring_clinical_performance(
+    db: Session = Depends(get_db),
+    _: models.Clinician = Depends(get_current_clinician),
+):
+    """Compute sensitivity, specificity, F1, and AUC-ROC from assessments that
+    have a clinical_outcome_label. Requires ≥ 10 labeled assessments with at
+    least one positive (impaired) and one negative (normal) class present.
+
+    Binary mapping: normal → 0  |  mci / dementia / other → 1
+    Positive prediction: composite_score < 65
+    """
+    MIN_LABELED = 10
+    labeled = (
+        db.query(models.Assessment)
+        .filter(models.Assessment.clinical_outcome_label.isnot(None))
+        .all()
+    )
+    n_labeled = len(labeled)
+    if n_labeled < MIN_LABELED:
+        return {
+            "status": "insufficient_labels",
+            "n_labeled": n_labeled,
+            "required": MIN_LABELED,
+            "message": (
+                f"Only {n_labeled} labeled assessment(s) found. "
+                f"At least {MIN_LABELED} are required. "
+                "Use PUT /assessments/{key}/clinical-label to add labels."
+            ),
+        }
+
+    y_true, y_score, y_pred = [], [], []
+    for assessment in labeled:
+        # Get the most recent task result for this assessment
+        tr = (
+            db.query(models.TaskResult)
+            .filter(models.TaskResult.assessment_id == assessment.id)
+            .order_by(models.TaskResult.recorded_at.desc())
+            .first()
+        )
+        if not tr or not tr.scores:
+            continue
+        try:
+            scores = json.loads(tr.scores)
+            composite = scores.get("composite")
+            if composite is None:
+                continue
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+        true_label = 0 if assessment.clinical_outcome_label == "normal" else 1
+        pred_label = 0 if composite >= 65 else 1
+        y_true.append(true_label)
+        y_score.append(100 - composite)   # higher score → more likely impaired
+        y_pred.append(pred_label)
+
+    if len(y_true) < MIN_LABELED:
+        return {
+            "status": "insufficient_labels",
+            "n_labeled": len(y_true),
+            "required": MIN_LABELED,
+            "message": f"Only {len(y_true)} assessments had scoreable task results.",
+        }
+
+    classes = set(y_true)
+    if len(classes) < 2:
+        return {
+            "status": "single_class",
+            "n_labeled": len(y_true),
+            "message": "All labeled assessments belong to the same class. Both normal and impaired labels are required.",
+        }
+
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+    tn, fp, fn, tp = cm.ravel()
+    sensitivity = round(tp / (tp + fn), 3) if (tp + fn) > 0 else None
+    specificity = round(tn / (tn + fp), 3) if (tn + fp) > 0 else None
+    ppv         = round(tp / (tp + fp), 3) if (tp + fp) > 0 else None
+    npv         = round(tn / (tn + fn), 3) if (tn + fn) > 0 else None
+    f1          = round(float(f1_score(y_true, y_pred, zero_division=0)), 3)
+    try:
+        auc = round(float(roc_auc_score(y_true, y_score)), 3)
+    except ValueError:
+        auc = None
+
+    # ── Clinical performance threshold alerts ─────────────────────────────────
+    # Sensitivity < 80%: system is missing true cases of cognitive impairment
+    # Specificity < 80%: system is over-flagging cognitively normal patients
+    # Either warrants formal review before continued clinical use.
+    CLINICAL_THRESHOLD = 0.80
+    new_clinical_events = 0
+    for metric_path, metric_value, metric_name in [
+        ("clinical.sensitivity", sensitivity, "Sensitivity"),
+        ("clinical.specificity", specificity, "Specificity"),
+    ]:
+        if metric_value is None or metric_value >= CLINICAL_THRESHOLD:
+            continue
+        existing = db.query(models.ChangeEvent).filter(
+            models.ChangeEvent.feature_path == metric_path,
+            models.ChangeEvent.breach_type  == "threshold_min",
+            models.ChangeEvent.status       == "open",
+        ).first()
+        if existing:
+            continue
+        db.add(models.ChangeEvent(
+            feature_path=metric_path,
+            breach_type="threshold_min",
+            severity="critical",
+            detail=json.dumps({
+                "metric": metric_path,
+                "metric_name": metric_name,
+                "value": metric_value,
+                "threshold": CLINICAL_THRESHOLD,
+                "n_labeled": len(y_true),
+                "detail": (
+                    f"{metric_name} is {metric_value:.1%} — below the 80% clinical performance "
+                    f"threshold (n={len(y_true)} labelled assessments). "
+                    "Formal review required before continued clinical use."
+                ),
+            }),
+        ))
+        _append_change_event_log(
+            metric_path,
+            f"Clinical Performance — {metric_name}",
+            "threshold_min",
+            f"{metric_name} {metric_value:.1%} is below the 80% threshold "
+            f"(n={len(y_true)} labelled assessments).",
+        )
+        new_clinical_events += 1
+    if new_clinical_events:
+        db.commit()
+
+    return {
+        "status":      "ok",
+        "n_labeled":   len(y_true),
+        "threshold":   {"composite_score": 65, "below_is_impaired": True},
+        "confusion_matrix": {"tn": int(tn), "fp": int(fp), "fn": int(fn), "tp": int(tp)},
+        "sensitivity": sensitivity,
+        "specificity": specificity,
+        "ppv":         ppv,
+        "npv":         npv,
+        "f1":          f1,
+        "auc_roc":     auc,
+        "label_distribution": {
+            "normal":   y_true.count(0),
+            "impaired": y_true.count(1),
+        },
+        "new_change_events": new_clinical_events,
     }
 
 

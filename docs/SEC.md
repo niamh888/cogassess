@@ -5,8 +5,8 @@
 | Document ID | CA-SEC-001 |
 | Title | Security Architecture and Threat Model |
 | Project | CogAssess |
-| Version | 0.5.0-beta |
-| Date | 2026-06-05 |
+| Version | 1.0.0 |
+| Date | 2026-06-29 |
 | Author | Niamh St John Lynch |
 | Organisation | MemoryTell Ltd / St John Lynch & Co. Ltd |
 | IEC 62304 Class | Class B |
@@ -17,7 +17,7 @@
 
 ## 1. Purpose and Scope
 
-This document defines the security architecture, threat model, and security controls for CogAssess version 0.5.0-beta. It is produced in accordance with IEC 62304:2006+AMD1:2015 §7.1 (Software configuration management) and §5.1 (Software development planning), and with reference to OWASP Application Security Verification Standard (ASVS) and OWASP Top 10.
+This document defines the security architecture, threat model, and security controls for CogAssess version 1.0.0. It is produced in accordance with IEC 62304:2006+AMD1:2015 §7.1 (Software configuration management) and §5.1 (Software development planning), and with reference to OWASP Application Security Verification Standard (ASVS) and OWASP Top 10.
 
 CogAssess is a Class B medical device software application that collects and processes speech recordings from patients undergoing cognitive assessment. It generates acoustic, linguistic, and semantic scores to support clinical interpretation by qualified healthcare professionals. Because patient data — including audio recordings and cognitive assessment results — is handled by the system, the confidentiality, integrity, and availability of that data must be protected at all stages of the data lifecycle.
 
@@ -268,7 +268,7 @@ Per CA-SOUP-001 §6, the SOUP evaluation will be repeated at a minimum annually 
 
 ## 8. Security Controls for Production Deployment
 
-The following controls are **mandatory pre-conditions** that must be satisfied before CogAssess is deployed in any environment where real patient data will be processed. These controls are not yet in place — CogAssess 0.5.0-beta is approved for supervised research use only.
+The following controls are **mandatory pre-conditions** that must be satisfied before CogAssess is deployed in any environment where real patient data will be processed. These controls are not yet in place — CogAssess v1.0.0 has completed internal security testing (Bandit static analysis, OWASP API Security Top 10) and is approved for supervised research use only. Production deployment additionally requires the controls listed below.
 
 | # | Control | Requirement | Rationale |
 |---|---|---|---|
@@ -333,7 +333,7 @@ Contact information for the development team, the deploying institution's data p
 
 ## 10. Penetration Test Record
 
-This section records the results of security testing activities conducted against CogAssess v0.5.0-beta on 2026-06-06. Three activities were carried out: (1) Bandit static analysis, (2) OWASP API Security Top 10 automated tests, and (3) OWASP ZAP dynamic scanning (pending live deployment).
+This section records the results of security testing activities conducted against CogAssess on 2026-06-06 (v0.5.0-beta baseline; results carry forward to v1.0.0 — no security-relevant code changes since that test run). Three activities were carried out: (1) Bandit static analysis, (2) OWASP API Security Top 10 automated tests, and (3) OWASP ZAP dynamic scanning (pending live deployment).
 
 ### 10.1 Bandit Static Analysis (CA-PEN-BAD-001)
 
@@ -424,6 +424,6 @@ Results must be documented in a supplementary CA-PEN-ZAP-001 addendum before fir
 
 ---
 
-*End of CA-SEC-001 v0.5.0-beta — Penetration test records added 2026-06-06*
+*End of CA-SEC-001 v1.0.0 — Updated 2026-06-29*
 
 *Document controlled under the CogAssess SDLC documentation suite. For the current revision, refer to the GitHub repository at https://github.com/niamh888/cogassess.*

@@ -83,7 +83,7 @@ CogAssess implements a configurable task battery with clinical condition presets
 
 ### 2.3 Development Stage
 
-CogAssess is at version 0.5.0-beta. It has completed IEC 62304 Class B software lifecycle documentation, internal software verification, ISO 14971 risk management, and SOUP evaluation. Clinical validation of scoring algorithms against reference standards in any of the above populations has not yet been completed. The present clinical investigation is the first structured study of CogAssess across its full range of clinical indications.
+CogAssess is at version 1.0.0. It has completed IEC 62304 Class B software lifecycle documentation, internal software verification, ISO 14971 risk management, and SOUP evaluation. Clinical validation of scoring algorithms against reference standards in any of the above populations has not yet been completed. The present clinical investigation is the first structured study of CogAssess across its full range of clinical indications.
 
 ---
 
@@ -169,7 +169,7 @@ Given identical audio input, output is identical on every run.
 
 A composite score is derived from a weighted average of all four domain scores. Domain weights are indication-specific and are applied via the clinical condition preset selected at assessment creation.
 
-> **Important limitation:** Scoring weights in CogAssess v0.5.0-beta are clinician-informed and theoretically derived. They have not been empirically validated in any clinical population. The present investigation is intended, in part, to generate the data necessary for such calibration.
+> **Important limitation:** Scoring weights in CogAssess v1.0.0 are clinician-informed and theoretically derived. They have not been empirically validated in any clinical population. The present investigation is intended, in part, to generate the data necessary for such calibration.
 
 ### 3.5 Population Reference Distribution
 
@@ -332,7 +332,7 @@ Additional indication-specific contraindications are noted in Section 5.
 
 ### 5.8 Dyslexia *(Phase 2 — Not Yet Implemented)*
 
-**Status:** The dyslexia clinical condition preset is defined in the CogAssess software requirements (CA-SRS-001) but has not been implemented in version 0.5.0-beta. It is planned for a future release.
+**Status:** The dyslexia clinical condition preset is defined in the CogAssess software requirements (CA-SRS-001) but has not been implemented in version 1.0.0. It is planned for a future release.
 
 **Clinical context:** Dyslexia is a specific learning difficulty characterised by difficulties with accurate and fluent word reading and spelling, typically arising from a phonological processing deficit (Snowling, 2000). In adults, dyslexia affects reading speed, phonological awareness, and — in some cases — spoken word retrieval and verbal fluency. Speech biomarkers relevant to dyslexia include word-finding pause patterns, phonological approximations, and reading-aloud fluency.
 

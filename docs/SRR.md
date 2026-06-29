@@ -5,19 +5,21 @@
 | Document ID | CA-SRR-001 |
 | Title | Software Release Record |
 | Project | CogAssess |
-| Version | 0.5.0-beta |
-| Release Date | 2026-06-05 |
+| Version | 1.0.0 |
+| Release Date | 2026-06-29 |
 | Author | Niamh St John Lynch |
 | Organisation | MemoryTell Ltd / St John Lynch & Co. Ltd |
 | IEC 62304 Class | Class B |
-| Status | Pre-release / Research Prototype |
+| Status | Released / Research Prototype |
 | GitHub Repository | niamh888/cogassess |
 
 ---
 
 ## 1. Purpose
 
-This Software Release Record (SRR) documents the formal release of CogAssess version 0.5.0-beta in accordance with IEC 62304:2006+AMD1:2015 §6.3 (Software release). It captures the release identification, scope, known limitations, SDLC verification status, deployment instructions, and the criteria for the next planned release.
+This Software Release Record (SRR) documents the formal release of CogAssess version 1.0.0 in accordance with IEC 62304:2006+AMD1:2015 §6.3 (Software release). It captures the release identification, scope, known limitations, SDLC verification status, deployment instructions, and the criteria for the next planned release.
+
+This is the second formal release of CogAssess. It supersedes the pre-release v0.5.0-beta (released 2026-06-05, delivered to MemoryTell Ltd.). The principal addition in v1.0.0 is a machine-learning change management monitoring system implementing the FDA Predetermined Change Control Plan (PCCP) framework and IEC 62304 §8 software maintenance obligations.
 
 This document is intended for use by the development team, quality assurance personnel, and any regulatory reviewers assessing conformance of the CogAssess software lifecycle. It should be read in conjunction with the full SDLC documentation suite listed in Section 6.
 
@@ -28,10 +30,10 @@ This document is intended for use by the development team, quality assurance per
 | Attribute | Value |
 |---|---|
 | Software item | CogAssess |
-| Release version | 0.5.0-beta |
-| Release date | 2026-06-05 |
+| Release version | 1.0.0 |
+| Release date | 2026-06-29 |
 | Git commit reference | To be filled at release |
-| Release classification | Pre-release / Research prototype |
+| Release classification | Research prototype |
 | IEC 62304 software safety classification | Class B |
 | Platform | Windows 11 (development); Linux recommended for production |
 | Runtime | Python 3.11+, Node.js 18+, React 18 |
@@ -45,7 +47,7 @@ CogAssess follows Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH[-prerelease]`
 
 ## 3. Scope of This Release
 
-Release 0.5.0-beta constitutes the first formally documented release of CogAssess. It includes the complete five-stage speech analysis pipeline, the clinical workflow interface, and a full IEC 62304 Class B SDLC documentation suite. The following components are included in this release.
+Release 1.0.0 builds on the v0.5.0-beta foundation. In addition to all components delivered in v0.5.0-beta, this release adds a change management monitoring system and associated regulatory documentation. The following components are included in this release.
 
 ### 3.1 Backend (FastAPI / Python)
 
@@ -69,11 +71,13 @@ Release 0.5.0-beta constitutes the first formally documented release of CogAsses
 - Clinical findings entry panel
 - Patient summary dashboard
 - JWT Bearer token authentication integrated with all API calls
+- **Monitoring dashboard** (new in v1.0.0): data drift table (Z-score, PSI, K-S, CUSUM), open change event management, and clinical performance metrics panel (sensitivity, specificity, PPV, NPV, F1, AUC-ROC)
 
 ### 3.3 Database
 
 - SQLite via SQLAlchemy 2.x ORM
 - Schema: `clinicians`, `patients`, `sessions`, `tasks`, `acoustic_features`, `linguistic_features`, `semantic_scores`, `emotion_results`, `clinical_findings`
+- **New in v1.0.0:** `drift_baselines` (baseline statistics per feature), `change_events` (open/dismissed drift events), `assessments.clinical_outcome_label` column
 
 ### 3.4 SDLC Documentation Suite
 
@@ -92,36 +96,61 @@ The following IEC 62304 companion documents are included in this release:
 | CA-RTM-001 | Requirements Traceability Matrix |
 | CA-VP-001 | Software Validation Plan (IEC 82304-1 §6) |
 | CA-VR-001 | Software Validation Report (IEC 82304-1 §6) |
+| CA-PCCP-001 | Predetermined Change Control Plan (FDA 2024 / MDCG-2025-6) — machine-readable: `change_control.json` |
 
 ---
 
 ## 4. Changes from Previous Version
 
-**N/A — this is the first formal release record.**
+### 4.1 Previous Release Reference
 
-Prior development work was carried out before a formal SDLC documentation regime was established. All prior work has been retrospectively documented in the companion SDLC suite (CA-SRS-001 through CA-SOUP-001) as required to achieve IEC 62304 Class B compliance from this release forward. Any future releases will include a detailed change log against this baseline.
+| Attribute | Value |
+|---|---|
+| Previous release | 0.5.0-beta |
+| Previous release date | 2026-06-05 |
+| Delivered to | MemoryTell Ltd. (feasibility prototype) |
+
+### 4.2 New Features in v1.0.0
+
+| Feature | Description |
+|---|---|
+| Change management monitoring | Real-time data drift detection per pipeline feature using four complementary metrics: Z-score (mean shift), PSI (distributional distance), K-S test (non-parametric distributional comparison), CUSUM (sequential trend accumulation) |
+| Shape statistics | Skewness and excess kurtosis tracked per feature at baseline and compared in each monitoring window |
+| Shannon entropy | Derived feature `emotion.entropy` tracks the informativeness of the 7-class emotion probability distribution |
+| Clinical performance metrics | `GET /monitoring/performance/clinical` endpoint computes sensitivity, specificity, PPV, NPV, F1, and AUC-ROC against clinician-recorded outcome labels (minimum 10 labels required) |
+| Clinical outcome labelling | `PUT /assessments/{key}/clinical-label` endpoint allows clinicians to record `normal`, `mci`, `dementia`, or `other` per assessment |
+| PCCP artefact | `change_control.json` at repository root encodes the Predetermined Change Control Plan (FDA 2024 guidance; MDCG-2025-6) as a machine-readable governance document |
+| Automatic DB migration | `_run_migrations()` in `main.py` adds new columns (`skewness`, `kurtosis_excess`, `raw_values`, `clinical_outcome_label`) to existing databases at startup without data loss |
+| Monitoring dashboard | React `MonitoringPage` at `/monitoring` showing drift table (8-column with all metric values and thresholds), open change events, and clinical performance panel |
+| Updated documentation | `docs/DEPLOYMENT.md §6.7` (monitoring setup), `README.md` (pre-deployment checklist and monitoring section), `frontend/README.md` (project-specific content replacing Vite boilerplate) |
+
+### 4.3 Bug Fixes and Removals
+
+| Item | Description |
+|---|---|
+| Removed `stt.confidence` from monitoring | Google Cloud Chirp universal model does not return meaningful confidence scores (always returns 0.0). Feature removed from `_DRIFT_FEATURES` and `change_control.json` to prevent spurious drift alerts. |
 
 ---
 
 ## 5. Known Limitations and Open Issues
 
-The following limitations and open issues are acknowledged for release 0.5.0-beta. Each has been assessed for risk in CA-RMF-001. None are assessed as unacceptable for supervised research use; all are planned for remediation before a production v1.0 release.
+The following limitations and open issues are acknowledged for release 1.0.0. Each has been assessed for risk in CA-RMF-001. None are assessed as unacceptable for supervised research use; all are planned for remediation in a future production release.
 
 ### 5.1 Model Validation
 
-The acoustic, linguistic, and semantic scoring algorithms have not yet been clinically validated on a representative patient population. Score thresholds and weighting factors are derived from published literature and internal judgement. Scores must be interpreted by a qualified clinician and must not be used as the sole basis for clinical diagnosis. A formal clinical validation study is planned for v1.0.
+The acoustic, linguistic, and semantic scoring algorithms have not yet been clinically validated on a representative patient population. Score thresholds and weighting factors are derived from published literature and internal judgement. Scores must be interpreted by a qualified clinician and must not be used as the sole basis for clinical diagnosis. A formal clinical validation study is planned for a future production release.
 
 ### 5.2 SQLite Single-File Database
 
-SQLite does not support row-level locking or concurrent write access from multiple processes. This database is not suitable for multi-clinician concurrent production use. For the current release, CogAssess is intended for single-site, single-clinician pilot use. Migration to PostgreSQL is planned for v1.0.
+SQLite does not support row-level locking or concurrent write access from multiple processes. This database is not suitable for multi-clinician concurrent production use. For the current release, CogAssess is intended for single-site, single-clinician pilot use. Migration to PostgreSQL is planned for a future production release.
 
 ### 5.3 No Automated Test Suite
 
-The verification test cases defined in CA-SVP-001 have not yet been automated. All testing for this release is manual, following the procedures documented in CA-SVP-001. An automated unit and integration test suite is planned for v1.0.
+The verification test cases defined in CA-SVP-001 have not yet been automated. All testing for this release is manual, following the procedures documented in CA-SVP-001. An automated unit and integration test suite is planned for a future release.
 
 ### 5.4 Windows OneDrive Path Compatibility
 
-When the project directory is located within a Windows OneDrive-synchronised path containing spaces, `uvicorn --reload` crashes due to a `watchfiles` library incompatibility with such paths. **Workaround:** run the server without the `--reload` flag (`uvicorn main:app --host 0.0.0.0 --port 8000`). This does not affect functionality; hot-reload is a development convenience only. Resolution is planned for v1.0.
+When the project directory is located within a Windows OneDrive-synchronised path containing spaces, `uvicorn --reload` crashes due to a `watchfiles` library incompatibility with such paths. **Workaround:** run the server without the `--reload` flag (`uvicorn main:app --host 0.0.0.0 --port 8000`). This does not affect functionality; hot-reload is a development convenience only. Resolution is planned for a future release.
 
 ### 5.5 ffmpeg Path Configuration
 
@@ -129,7 +158,7 @@ The `ffmpeg` executable is not automatically discovered from the system PATH in 
 
 ### 5.6 bcrypt / passlib Compatibility
 
-`bcrypt` version 4.x introduced a breaking change that removes the `__about__` attribute relied upon by `passlib` 1.7.x. This is mitigated by a startup patch in `main.py` that restores the missing attribute before passlib initialises. This issue is tracked as SOUP-04 in CA-SOUP-001. A permanent fix via `passlib` upgrade or replacement is planned for v1.0.
+`bcrypt` version 4.x introduced a breaking change that removes the `__about__` attribute relied upon by `passlib` 1.7.x. This is mitigated by a startup patch in `main.py` that restores the missing attribute before passlib initialises. This issue is tracked as SOUP-04 in CA-SOUP-001. A permanent fix via `passlib` upgrade or replacement is planned for a future release.
 
 ### 5.7 English-Only Language Support
 
@@ -230,11 +259,11 @@ Before deploying to any environment where real patient data will be processed, t
 | Quality reviewed by | ______________ | ______________ | ______________ |
 | Clinical reviewed by | ______________ | ______________ | ______________ |
 
-By signing this document, the approvers confirm that they have reviewed the release scope, known limitations, and SDLC verification checklist, and accept the release of CogAssess version 0.5.0-beta for supervised research use subject to the limitations stated in Section 5.
+By signing this document, the approvers confirm that they have reviewed the release scope, known limitations, and SDLC verification checklist, and accept the release of CogAssess version 1.0.0 for supervised research use subject to the limitations stated in Section 5.
 
 ---
 
-## 9. Next Planned Version — v1.0 Objectives
+## 9. Next Planned Version — v1.x / Production Release Objectives
 
 The following objectives are targeted for CogAssess v1.0, at which point the software will be considered suitable for production deployment in a clinical research setting:
 

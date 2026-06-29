@@ -51,7 +51,7 @@ The purpose of verification is to confirm that the implemented software meets th
 
 ### 1.2 Scope
 
-This plan covers all verification activities for CogAssess v0.5.0-beta and subsequent versions within the 0.x development series. It encompasses:
+This plan covers all verification activities for CogAssess v1.0.0 and subsequent versions within the 1.x release series. It encompasses:
 
 - Authentication and access control (AUTH)
 - Patient registration and management (PAT)

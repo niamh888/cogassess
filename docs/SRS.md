@@ -46,7 +46,7 @@ This document serves as the primary reference for design, implementation, verifi
 ### 1.2 Scope
 
 **Product name:** CogAssess  
-**Version scope:** v0.5.x (current development series)
+**Version scope:** v1.0.x (current stable release series)
 
 CogAssess is a clinical-grade speech biomarker assessment platform designed for use by qualified clinicians. The system records spoken audio from patients performing structured speech tasks, processes the audio through a multi-stage analytical pipeline, and produces quantitative biomarker scores and clinical flag indicators to assist clinicians in evaluating cognitive function.
 

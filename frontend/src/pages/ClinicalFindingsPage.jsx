@@ -28,12 +28,13 @@ export default function ClinicalFindingsPage() {
   const [saved, setSaved]           = useState(false);
   const [error, setError]           = useState(null);
 
-  const [outcome, setOutcome]               = useState("");
-  const [followUpDate, setFollowUpDate]     = useState("");
-  const [internalNotes, setInternalNotes]   = useState("");
-  const [patientSummary, setPatientSummary] = useState("");
-  const [changeReason, setChangeReason]     = useState("");
-  const [history, setHistory]               = useState([]);
+  const [outcome, setOutcome]                       = useState("");
+  const [confirmedDiagnosis, setConfirmedDiagnosis] = useState("");
+  const [followUpDate, setFollowUpDate]             = useState("");
+  const [internalNotes, setInternalNotes]           = useState("");
+  const [patientSummary, setPatientSummary]         = useState("");
+  const [changeReason, setChangeReason]             = useState("");
+  const [history, setHistory]                       = useState([]);
 
   useEffect(() => {
     fetch(`${API}/assessments/${key}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -41,6 +42,7 @@ export default function ClinicalFindingsPage() {
       .then(data => {
         setAssessment(data);
         if (data.clinical_outcome)          setOutcome(data.clinical_outcome);
+        if (data.clinical_outcome_label)    setConfirmedDiagnosis(data.clinical_outcome_label);
         if (data.follow_up_date)            setFollowUpDate(data.follow_up_date);
         if (data.clinical_notes_findings)   setInternalNotes(data.clinical_notes_findings);
         if (data.patient_summary)           setPatientSummary(data.patient_summary);
@@ -79,6 +81,12 @@ export default function ClinicalFindingsPage() {
         const body = await r.json().catch(() => ({}));
         throw new Error(body.detail || `HTTP ${r.status}`);
       }
+      // Save confirmed diagnosis label (for monitoring metrics)
+      await fetch(`${API}/assessments/${key}/clinical-label`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ label: confirmedDiagnosis || null }),
+      });
       setChangeReason("");
       setSaved(true);
       // Refresh history
@@ -168,6 +176,47 @@ export default function ClinicalFindingsPage() {
             </label>
           </section>
         )}
+
+        {/* Confirmed diagnosis for monitoring */}
+        <section style={{ background: "var(--color-surface)", border: "0.5px solid var(--color-border-primary)", borderRadius: "var(--border-radius-lg)", padding: "1.5rem", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 4px", color: "var(--color-text-primary)" }}>Confirmed diagnosis</h2>
+          <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "0 0 16px" }}>
+            If a formal diagnosis has been reached, record it here. This is used by the system to measure its own accuracy over time — it never affects the assessment scores or the patient record.
+            Leave blank if a diagnosis has not yet been confirmed.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              { value: "normal",   label: "Cognitively normal",                 desc: "No significant cognitive impairment identified." },
+              { value: "mci",      label: "Mild Cognitive Impairment (MCI)",    desc: "Noticeable decline beyond normal ageing; not meeting dementia criteria." },
+              { value: "dementia", label: "Dementia",                           desc: "Significant cognitive impairment affecting daily functioning." },
+              { value: "other",    label: "Other / unclear",                    desc: "Does not fit standard categories, or diagnosis is uncertain at this time." },
+            ].map(opt => (
+              <label key={opt.value} style={{ display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer", padding: "12px 14px", borderRadius: "var(--border-radius-md)", border: `1.5px solid ${confirmedDiagnosis === opt.value ? "var(--color-accent)" : "var(--color-border-primary)"}`, background: confirmedDiagnosis === opt.value ? "var(--color-background-info)" : "var(--color-surface)", transition: "border-color 0.15s, background 0.15s" }}>
+                <input
+                  type="radio"
+                  name="confirmedDiagnosis"
+                  value={opt.value}
+                  checked={confirmedDiagnosis === opt.value}
+                  onChange={() => setConfirmedDiagnosis(opt.value)}
+                  style={{ marginTop: 2, accentColor: "var(--color-accent)", flexShrink: 0 }}
+                />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 2 }}>{opt.label}</div>
+                  <div style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{opt.desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          {confirmedDiagnosis && (
+            <button
+              type="button"
+              onClick={() => setConfirmedDiagnosis("")}
+              style={{ marginTop: 12, background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "var(--color-text-tertiary)", padding: 0, textDecoration: "underline" }}
+            >
+              Clear selection
+            </button>
+          )}
+        </section>
 
         {/* Internal clinical notes */}
         <section style={{ background: "var(--color-surface)", border: "0.5px solid var(--color-border-primary)", borderRadius: "var(--border-radius-lg)", padding: "1.5rem", marginBottom: 20 }}>

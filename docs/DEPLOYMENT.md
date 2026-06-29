@@ -3,8 +3,8 @@
 | Field | Detail |
 |-------|--------|
 | Document reference | CA-DEP-001 |
-| Version | 1.0 |
-| Date | 2026-06-06 |
+| Version | 1.1 |
+| Date | 2026-06-29 |
 | Audience | System administrator or IT contact responsible for clinical trial deployment |
 | Companion documents | CA-SRS-001, CA-SAD-001, CA-RMF-001, CA-SEC-001, CA-SVP-001, CA-VP-001, CA-VR-001, CA-RTM-001 |
 
@@ -451,6 +451,87 @@ For a clinical trial, create individual named accounts for each clinician rather
 
 ---
 
+### 6.7 Change Management Monitoring Setup
+
+**[REGULATORY — PCCP / IEC 62304 §8]**
+
+CogAssess includes a built-in change management monitoring system aligned with the Predetermined Change Control Plan (PCCP) requirements under FDA (2024) and MDCG-2025-6 (2025). This section describes the steps required to activate it correctly before clinical use.
+
+#### 6.7.1 Verify the change control plan file is present
+
+The file `change_control.json` in the project root defines the performance thresholds that trigger a formal change assessment. Confirm it is present and has not been modified:
+
+```bash
+cat change_control.json
+```
+
+Any modification to this file requires a clinical validation review and a documented change assessment before the modified version is deployed.
+
+#### 6.7.2 Understand automatic column migration
+
+On every startup, CogAssess runs a lightweight migration that adds any new monitoring columns to existing database tables. This is logged silently and requires no manual action. If you see `OperationalError: no such column` in the logs, it means the server failed to start cleanly — restart it once.
+
+#### 6.7.3 Establish the drift baseline
+
+The drift monitoring system compares recent assessments against a baseline computed from historical data. A baseline **cannot** be computed until at least 5 completed assessments exist in the database.
+
+**Before go-live (if test assessments exist):**
+
+1. Log in and navigate to **Monitoring**
+2. Click **Compute baseline**
+3. If the system reports `Need at least 5 completed task results`, proceed to first clinical sessions and return to this step when 5 real assessments are complete
+4. After computing the baseline, dismiss any open change events from test data by clicking **Dismiss** in the Change Events table
+
+**After go-live:**
+
+Recompute the baseline after accumulating 20–30 real patient assessments — this gives a clinically representative reference population. Recomputation is a controlled event: document it as a change assessment in the change events log.
+
+#### 6.7.4 Respond to open change events
+
+The monitoring system creates a **Change Event** when any pipeline feature breaches the thresholds defined in `change_control.json`. When a change event is open:
+
+- A red badge appears on the **Monitoring** header link for all logged-in clinicians
+- The event is logged to `logs/change_events.md` (persistent, append-only)
+- The event appears in the Change Events table with status **Open**
+
+**Required action:** A qualified person (clinical engineer or principal investigator) must review the event and either:
+- Click **Mark reviewed** with documented notes explaining the finding, or
+- Click **Dismiss** if the event is a known artefact (e.g. small baseline population, test data)
+
+Do not leave change events open indefinitely. Unreviewed open events at the time of a regulatory audit indicate a gap in the change management process.
+
+#### 6.7.5 Recording clinical outcome labels (unlocks F1 / AUC metrics)
+
+The **Clinical Performance Metrics** panel in the Monitoring page shows sensitivity, specificity, F1, and AUC-ROC. These require clinician-confirmed outcome labels — the system cannot compute them from pipeline outputs alone.
+
+After each patient's confirmed clinical diagnosis is established, record it using the API:
+
+```bash
+# Using curl (replace values as appropriate)
+curl -X PUT https://cogassess.yourdomain.com/api/assessments/{assessment_key}/clinical-label \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"label": "mci"}'
+```
+
+Valid label values: `normal` · `mci` · `dementia` · `other`
+
+The `assessment_key` is the UUID shown in the assessment URL (e.g. `ca-2026-0001-xxxx`). A minimum of **10 labeled assessments** with at least one from each class (normal and impaired) is required before the metrics panel activates.
+
+> **Workflow note:** In a clinical investigation, outcome labeling should be performed by the principal investigator or designated clinician after the patient's full workup is complete — not at the time of the assessment itself. Labels represent the confirmed clinical ground truth and form the evidence base for ongoing performance monitoring.
+
+#### 6.7.6 Ongoing monitoring cadence
+
+| Activity | Recommended frequency | Who |
+|---|---|---|
+| Review open change events | At least weekly during active trial | Clinical engineer / PI |
+| Recompute baseline | After every 20–30 new assessments | Clinical engineer |
+| Review drift dashboard | Before each batch of clinical sessions | Clinical engineer |
+| Add clinical outcome labels | After each confirmed diagnosis | Clinician / PI |
+| Review clinical performance metrics (F1, AUC) | Monthly once 10+ labels exist | PI / Sponsor |
+
+---
+
 ## 7. Pre-Go-Live Verification
 
 **[REGULATORY]** The following checks must be completed and documented before the first clinical session. Keep a record of who performed each check and when.
@@ -513,6 +594,15 @@ curl -X POST \
 ```
 
 If this returns a 200 or 400 (not a network error or 403), GCP connectivity is confirmed.
+
+### 7.5b Change Management Monitoring Check
+
+1. Log in and navigate to **Monitoring**
+2. Confirm the page loads without error
+3. If ≥ 5 test assessments exist, click **Compute baseline** and confirm it succeeds
+4. Confirm no open change events remain from test data (dismiss any that do)
+5. Confirm `logs/change_events.md` exists and is readable
+6. Confirm `change_control.json` is present in the project root and matches the version in the repository
 
 ### 7.6 OWASP ZAP Dynamic Security Scan
 
@@ -812,6 +902,11 @@ This is a regulatory requirement under IEC 62304 §8.1.2.
 | Daily CVE scan scheduled (cron job confirmed running) | | | |
 | Alert recipient confirmed (SNS / email subscription verified) | | | |
 | CVE response protocol communicated to site IT contact | | | |
+| `change_control.json` present and unmodified | | | |
+| Monitoring page loads without error | | | |
+| Any pre-deployment change events dismissed | | | |
+| Clinical outcome label workflow explained to principal investigator | | | |
+| Monitoring cadence agreed with clinical team (Section 6.7.6) | | | |
 | **Validation (IEC 82304-1 — CA-VP-001)** | | | |
 | OWASP ZAP scan complete — no Critical/High open (Section 7.6) | | | |
 | ZAP report filed in Trial Master File | | | |

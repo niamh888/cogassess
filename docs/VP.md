@@ -36,7 +36,7 @@
 
 ## 1. Purpose and Scope
 
-This Software Validation Plan (VP) defines the validation activities, acceptance criteria, environment, and responsibilities for CogAssess version 0.5.0-beta. It is produced in accordance with IEC 82304-1:2016 §6 (Software validation), which requires manufacturers of health software to demonstrate that the software meets its specified intended use when operated in the intended environment by the intended users.
+This Software Validation Plan (VP) defines the validation activities, acceptance criteria, environment, and responsibilities for CogAssess version 1.0.0. It is produced in accordance with IEC 82304-1:2016 §6 (Software validation), which requires manufacturers of health software to demonstrate that the software meets its specified intended use when operated in the intended environment by the intended users.
 
 ### 1.1 Scope
 
