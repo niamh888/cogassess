@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "CogAssess: Operationalising a Predetermined Change Control Plan in AI-Enabled Medical Device Software"
+authors:
+  - family-names: "St John Lynch"
+    given-names: "Niamh"
+    affiliation: "Dundalk Institute of Technology"
+    orcid: "https://orcid.org/0009-0009-4150-4970"
+version: "1.0.1"
+doi: "10.5281/zenodo.21065514"
+date-released: "2026-06-30"
+url: "https://github.com/niamh888/cogassess"
+license: "MIT"
+type: software
