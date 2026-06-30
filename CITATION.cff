@@ -10,5 +10,6 @@ version: "1.0.1"
 doi: "10.5281/zenodo.21065514"
 date-released: "2026-06-30"
 url: "https://github.com/niamh888/cogassess"
-license: "MIT"
+license: "Apache-2.0"
+copyright: "© 2026 Niamh St John Lynch"
 type: software
