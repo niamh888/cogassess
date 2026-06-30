@@ -1,6 +1,6 @@
 # CogAssess — Speech Biomarker Assessment Platform
 
-A clinician-facing speech biomarker assessment platform developed by **St John Lynch & Co. Ltd** on behalf of **MemoryTell Ltd**.
+A clinician-facing speech biomarker assessment platform developed by **St John Lynch & Co. Ltd** and shared with **MemoryTell Ltd** at v.0.5.0 for feasibility / prototype (what's possible)!
 
 CogAssess records short speech samples from patients, runs them through a five-stage AI analysis pipeline, and presents clinicians with a scored cognitive report across four domains. Clinicians then record findings and generate a patient-facing summary.
 
@@ -398,8 +398,8 @@ cogassess/
 │   │   │   └── conditions.js     # 8 clinical condition presets
 │   │   └── index.css             # CSS variables (MemoryTell forest green brand)
 │   ├── public/
-│   │   ├── memorytell-logo.png   # Wordmark (header, footer, patient summary)
-│   │   └── memorytell-icon.png   # Favicon
+│   │   ├── sjl-logo.png   # Wordmark (header, footer, patient summary)
+│   │   └── sjl-icon.png   # Favicon
 │   └── index.html
 └── README.md
 ```
@@ -451,4 +451,4 @@ A full IEC 62304 Class B / IEC 82304-1 software lifecycle document suite is in `
 
 ---
 
-*Developed by St John Lynch & Co. Ltd · © 2026 MemoryTell Ltd. All rights reserved.*
+*Developed by St John Lynch & Co. Ltd · © 2026 St John Lynch & Co. Ltd. All rights reserved. Shared with MemoryTell at v.0.5.0 to demonstrate feasibility project (what's possible).  Updated under DkIT PhD work to v.1.0.0 to demonstrate PCCP integration and performance, data drift analysis and feedback mechanism.  Publically accessible for review and publication pending - refer to citation.cff*

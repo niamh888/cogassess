@@ -45,4 +45,4 @@ All pages hardcode `http://localhost:8000` as the API base. For production, upda
 | React Router v6 | Client-side routing |
 | Vite | Build tool and dev server |
 
-*Part of CogAssess — MemoryTell Ltd © 2026*
+*Part of CogAssess — St John lynch & Co. Ltd. © 2026* Shared with MemoryTell as a feasibility/prototype June 2026 at v.0.5.0. 
